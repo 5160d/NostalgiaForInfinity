@@ -67,7 +67,7 @@ class NostalgiaForInfinityX6(IStrategy):
   INTERFACE_VERSION = 3
 
   def version(self) -> str:
-    return "v16.0.15"
+    return "v16.0.17"
 
   stoploss = -0.99
 
@@ -376,18 +376,18 @@ class NostalgiaForInfinityX6(IStrategy):
   grinding_v2_derisk_level_2_stake_futures = 0.30
 
   grinding_v2_grind_1_stakes_spot = [0.25, 0.30, 0.35, 0.40]
-  grinding_v2_grind_1_thresholds_spot = [-0.06, -0.08, -0.10, -0.12]
+  grinding_v2_grind_1_thresholds_spot = [-0.12, -0.14, -0.16, -0.18]
   grinding_v2_grind_1_stakes_futures = [0.25, 0.30, 0.35, 0.40]
-  grinding_v2_grind_1_thresholds_futures = [-0.06, -0.08, -0.10, -0.12]
+  grinding_v2_grind_1_thresholds_futures = [-0.12, -0.14, -0.16, -0.18]
   grinding_v2_grind_1_profit_threshold_spot = 0.01
   grinding_v2_grind_1_profit_threshold_futures = 0.01
   grinding_v2_grind_1_derisk_spot = -0.10
   grinding_v2_grind_1_derisk_futures = -0.10
 
   grinding_v2_grind_2_stakes_spot = [0.10, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18]
-  grinding_v2_grind_2_thresholds_spot = [-0.04, -0.05, -0.06, -0.07, -0.08, -0.09, -0.10, -0.12, -0.13]
+  grinding_v2_grind_2_thresholds_spot = [-0.10, -0.11, -0.12, -0.13, -0.14, -0.15, -0.16, -0.17, -0.18]
   grinding_v2_grind_2_stakes_futures = [0.10, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18]
-  grinding_v2_grind_2_thresholds_futures = [-0.04, -0.05, -0.06, -0.07, -0.08, -0.09, -0.10, -0.12, -0.13]
+  grinding_v2_grind_2_thresholds_futures = [-0.10, -0.11, -0.12, -0.13, -0.14, -0.15, -0.16, -0.17, -0.18]
   grinding_v2_grind_2_profit_threshold_spot = 0.02
   grinding_v2_grind_2_profit_threshold_futures = 0.02
   grinding_v2_grind_2_derisk_spot = -0.10
@@ -32756,7 +32756,7 @@ class NostalgiaForInfinityX6(IStrategy):
           and (last_candle["close"] > (last_candle["high_max_6_1h"] * 0.85))
           and (last_candle["close"] > (last_candle["high_max_12_1h"] * 0.80))
           and (last_candle["close"] < (last_candle["low_min_24_4h"] * 1.20))
-          and (last_candle["close"] < (last_candle["EMA_16"] * 0.975))
+          and (last_candle["close"] < (last_candle["EMA_16"] * 0.982))
         )
         or (
           (last_candle["RSI_14"] < 36.0)
