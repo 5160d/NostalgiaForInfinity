@@ -67,7 +67,7 @@ class NostalgiaForInfinityX6(IStrategy):
   INTERFACE_VERSION = 3
 
   def version(self) -> str:
-    return "v16.0.20"
+    return "v16.0.21"
 
   stoploss = -0.99
 
@@ -2887,7 +2887,11 @@ class NostalgiaForInfinityX6(IStrategy):
     # Candle change
     df["change_pct"] = (df["close"] - df["open"]) / df["open"] * 100.0
     # Close max
+    df["close_max_12"] = df["close"].rolling(12).max()
     df["close_max_48"] = df["close"].rolling(48).max()
+    # Close min
+    df["close_min_12"] = df["close"].rolling(12).min()
+    df["close_min_48"] = df["close"].rolling(48).min()
     # Number of empty candles
     df["num_empty_288"] = (df["volume"] <= 0).rolling(window=288, min_periods=288).sum()
 
@@ -33067,6 +33071,14 @@ class NostalgiaForInfinityX6(IStrategy):
           and (last_candle["EMA_26"] > last_candle["EMA_12"])
           and ((last_candle["EMA_26"] - last_candle["EMA_12"]) > (last_candle["open"] * 0.034))
           and ((previous_candle["EMA_26"] - previous_candle["EMA_12"]) > (last_candle["open"] / 100.0))
+        )
+        or (
+          (last_candle["RSI_3"] > 5.0)
+          and (last_candle["RSI_3_15m"] > 25.0)
+          and (last_candle["RSI_3_1h"] > 30.0)
+          and (last_candle["close"] < (last_candle["high_max_24_4h"] * 0.90))
+          and (last_candle["close"] < (last_candle["close_max_48"] * 0.90))
+          and (last_candle["close"] > (last_candle["close_min_12"] * 1.08))
         )
       )
     ):
