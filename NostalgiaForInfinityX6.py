@@ -29,7 +29,7 @@ warnings.simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 #############################################################################################################
 ##               GENERAL RECOMMENDATIONS                                                                   ##
 ##                                                                                                         ##
-##   For optimal performance, suggested to use between 4 and 6 open trades, with unlimited stake.          ##
+##   For optimal performance, suggested to use between 6 and 12 open trades, with unlimited stake.         ##
 ##   A pairlist with 40 to 80 pairs. Volume pairlist works well.                                           ##
 ##   Prefer stable coin (USDT, BUSDT etc) pairs, instead of BTC or ETH pairs.                              ##
 ##   Highly recommended to blacklist leveraged tokens (*BULL, *BEAR, *UP, *DOWN etc).                      ##
@@ -67,7 +67,7 @@ class NostalgiaForInfinityX6(IStrategy):
   INTERFACE_VERSION = 3
 
   def version(self) -> str:
-    return "v16.1.2"
+    return "v16.1.4"
 
   stoploss = -0.99
 
@@ -32332,7 +32332,7 @@ class NostalgiaForInfinityX6(IStrategy):
     if (
       (self.grinding_v2_grind_2_enable)
       and (is_derisk_1_found or is_derisk_2_found or is_derisk_3_found)
-      and (is_long_grind_entry or (grind_2_sub_grind_count > 0))
+      and is_long_grind_entry
       and (current_time - timedelta(minutes=5) > filled_entries[-1].order_filled_utc)
       and ((current_time - timedelta(hours=2) > filled_orders[-1].order_filled_utc) or (slice_profit < -0.02))
       and (
@@ -32417,7 +32417,7 @@ class NostalgiaForInfinityX6(IStrategy):
     if (
       (self.grinding_v2_grind_3_enable)
       and (is_derisk_1_found or is_derisk_2_found or is_derisk_3_found)
-      and (is_long_grind_entry or (grind_3_sub_grind_count > 0))
+      and is_long_grind_entry
       and (current_time - timedelta(minutes=5) > filled_entries[-1].order_filled_utc)
       and ((current_time - timedelta(hours=2) > filled_orders[-1].order_filled_utc) or (slice_profit < -0.02))
       and (
@@ -33146,6 +33146,12 @@ class NostalgiaForInfinityX6(IStrategy):
         and (last_candle["close"] < (last_candle["high_max_24_4h"] * 0.90))
         and (last_candle["close"] < (last_candle["close_max_48"] * 0.90))
         and (last_candle["close"] > (last_candle["close_min_12"] * 1.08))
+      )
+      or (
+        (last_candle["RSI_3"] > 5.0)
+        and (last_candle["RSI_3_15m"] > 5.0)
+        and (last_candle["STOCHRSIk_14_14_3_3"] < 20.0)
+        and (last_candle["RSI_14"] < (last_candle["RSI_14_1h"] - 45.0))
       )
     ):
       return True
