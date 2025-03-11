@@ -67,7 +67,7 @@ class NostalgiaForInfinityX6(IStrategy):
   INTERFACE_VERSION = 3
 
   def version(self) -> str:
-    return "v16.2.1"
+    return "v16.2.3"
 
   stoploss = -0.99
 
@@ -181,13 +181,13 @@ class NostalgiaForInfinityX6(IStrategy):
   stop_threshold_spot = 0.10
   stop_threshold_futures = 0.10
   stop_threshold_doom_spot = 0.12
-  stop_threshold_doom_futures = 0.36
+  stop_threshold_doom_futures = 0.12
   stop_threshold_spot_rebuy = 1.0
   stop_threshold_futures_rebuy = 3.0
   stop_threshold_rapid_spot = 0.12
-  stop_threshold_rapid_futures = 0.36
+  stop_threshold_rapid_futures = 0.12
   stop_threshold_derisk_spot = 0.12
-  stop_threshold_derisk_futures = 0.36
+  stop_threshold_derisk_futures = 0.12
 
   # user specified fees to be used for profit calculations
   custom_fee_open_rate = None
@@ -836,18 +836,12 @@ class NostalgiaForInfinityX6(IStrategy):
       if trade.open_date_utc.replace(tzinfo=None) >= datetime(2025, 3, 9) or is_backtest:
         if not is_rapid_mode and (
           profit_init_ratio
-          <= -(
-            (self.stop_threshold_doom_futures if self.is_futures_mode else self.stop_threshold_doom_spot)
-            / trade.leverage
-          )
+          <= -(self.stop_threshold_doom_futures if self.is_futures_mode else self.stop_threshold_doom_spot)
         ):
           return True, previous_sell_reason
         elif is_rapid_mode and (
           profit_init_ratio
-          <= -(
-            (self.stop_threshold_rapid_futures if self.is_futures_mode else self.stop_threshold_rapid_spot)
-            / trade.leverage
-          )
+          <= -(self.stop_threshold_rapid_futures if self.is_futures_mode else self.stop_threshold_rapid_spot)
         ):
           return True, previous_sell_reason
       if profit_init_ratio > 0.0:
@@ -11947,6 +11941,11 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append(df["global_protections_long_pump"] == True)
           long_entry_logic.append(df["global_protections_long_dump"] == True)
 
+          # 5m down move, 4h high
+          long_entry_logic.append((df["RSI_3"] > 5.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 70.0))
+          # 4h down move, 5m going down
+          long_entry_logic.append((df["RSI_3_4h"] > 5.0) | (((df["EMA_12"] - df["EMA_26"]) / df["EMA_26"]) > -0.02))
+
           # 5m down move, 1h high
           long_entry_logic.append((df["RSI_3"] > 5.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 90.0))
           # 5m down move, 15m still not low enough, 1d high
@@ -12919,6 +12918,9 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append(df["RSI_14_1h"] < 80.0)
           long_entry_logic.append(df["RSI_14_4h"] < 80.0)
           long_entry_logic.append(df["RSI_14_1d"] < 90.0)
+          # 4h down move, 5m going down
+          long_entry_logic.append((df["RSI_3_4h"] > 5.0) | (((df["EMA_12"] - df["EMA_26"]) / df["EMA_26"]) > -0.02))
+
           # 15m high, 4h still high, 1h downtrend
           long_entry_logic.append(
             (df["STOCHRSIk_14_14_3_3_15m"] < 70.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 40.0) | (df["ROC_9_1h"] > -15.0)
@@ -13492,6 +13494,10 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append((df["RSI_3_15m"] > 10.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 70.0))
           # 1h down move, 4h high
           long_entry_logic.append((df["RSI_3_1h"] > 15.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 70.0))
+          # 4h down move, 5m going down
+          long_entry_logic.append((df["RSI_3_4h"] > 5.0) | (((df["EMA_12"] - df["EMA_26"]) / df["EMA_26"]) > -0.02))
+          # 4h down move, 1d high
+          long_entry_logic.append((df["RSI_3_4h"] > 10.0) | (df["STOCHRSIk_14_14_3_3_1d"] < 80.0))
 
           # Logic
           long_entry_logic.append(df["RSI_14"] < 36.0)
@@ -13513,8 +13519,13 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append(df["RSI_3_4h"] > 10.0)
           # 5m down move, 15m still high
           long_entry_logic.append((df["RSI_3"] > 10.0) | (df["AROONU_14_15m"] < 75.0))
+          # 15m down move, 15m still not low enough
           long_entry_logic.append((df["RSI_3_15m"] > 20.0) | (df["AROONU_14_15m"] < 25.0))
+          # 1h down move, 4h high
+          long_entry_logic.append((df["RSI_3_1h"] > 25.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 80.0))
+          # 1h down move, 1h still not low enough
           long_entry_logic.append((df["RSI_3_1h"] > 30.0) | (df["AROONU_14_1h"] < 25.0))
+          # 15m still high
           long_entry_logic.append(
             (df["RSI_14_15m"] < 50.0) | (df["AROONU_14_15m"] < 75.0) | (df["STOCHRSIk_14_14_3_3_15m"] < 50.0)
           )
@@ -17230,7 +17241,6 @@ class NostalgiaForInfinityX6(IStrategy):
             < -(
               filled_entries[0].cost
               * (self.stop_threshold_rapid_futures if self.is_futures_mode else self.stop_threshold_rapid_spot)
-              / trade.leverage
             )
           )
         )
@@ -31709,7 +31719,6 @@ class NostalgiaForInfinityX6(IStrategy):
         < -(
           filled_entries[0].cost
           * (self.stop_threshold_doom_futures if self.is_futures_mode else self.stop_threshold_doom_spot)
-          / trade.leverage
         )
       )
       and (self.has_valid_entry_conditions(trade, current_rate, last_candle, previous_candle_1) == False)
@@ -37899,7 +37908,6 @@ class NostalgiaForInfinityX6(IStrategy):
             < -(
               filled_entries[0].cost
               * (self.stop_threshold_rapid_futures if self.is_futures_mode else self.stop_threshold_rapid_spot)
-              / trade.leverage
             )
           )
         )
@@ -52378,7 +52386,6 @@ class NostalgiaForInfinityX6(IStrategy):
         < -(
           filled_entries[0].cost
           * (self.stop_threshold_doom_futures if self.is_futures_mode else self.stop_threshold_doom_spot)
-          / trade.leverage
         )
       )
       and (self.has_valid_entry_conditions(trade, current_rate, last_candle, previous_candle_1) == False)
