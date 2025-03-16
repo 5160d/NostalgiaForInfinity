@@ -67,7 +67,7 @@ class NostalgiaForInfinityX6(IStrategy):
   INTERFACE_VERSION = 3
 
   def version(self) -> str:
-    return "v16.2.17"
+    return "v16.2.20"
 
   stoploss = -0.99
 
@@ -2049,6 +2049,7 @@ class NostalgiaForInfinityX6(IStrategy):
 
     is_backtest = self.is_backtest_mode()
     is_long_grind_mode = all(c in self.long_grind_mode_tags for c in enter_tags)
+    is_short_grind_mode = all(c in self.short_grind_mode_tags for c in enter_tags)
     is_v2_date = trade.open_date_utc.replace(tzinfo=None) >= datetime(2025, 2, 13) or is_backtest
 
     # Rebuy mode
@@ -2128,46 +2129,60 @@ class NostalgiaForInfinityX6(IStrategy):
           current_exit_profit,
         )
 
-    elif trade.is_short and (
-      any(
-        c
-        in (
-          self.short_normal_mode_tags
-          + self.short_pump_mode_tags
-          + self.short_quick_mode_tags
-          + self.short_mode_tags
-          + self.short_rapid_mode_tags
-          + self.short_grind_mode_tags
+    elif trade.is_short:
+      if is_short_grind_mode or not is_v2_date:
+        return self.short_grind_adjust_trade_position(
+          trade,
+          enter_tags,
+          current_time,
+          current_rate,
+          current_profit,
+          min_stake,
+          max_stake,
+          current_entry_rate,
+          current_exit_rate,
+          current_entry_profit,
+          current_exit_profit,
         )
-        for c in enter_tags
-      )
-      or not any(
-        c
-        in (
-          self.short_normal_mode_tags
-          + self.short_pump_mode_tags
-          + self.short_quick_mode_tags
-          + self.short_rebuy_mode_tags
-          + self.short_mode_tags
-          + self.short_rapid_mode_tags
-          + self.short_grind_mode_tags
-        )
-        for c in enter_tags
-      )
-    ):
-      return self.short_grind_adjust_trade_position(
-        trade,
-        enter_tags,
-        current_time,
-        current_rate,
-        current_profit,
-        min_stake,
-        max_stake,
-        current_entry_rate,
-        current_exit_rate,
-        current_entry_profit,
-        current_exit_profit,
-      )
+      else:
+        if any(
+          c
+          in (
+            self.short_normal_mode_tags
+            + self.short_pump_mode_tags
+            + self.short_quick_mode_tags
+            + self.short_mode_tags
+            + self.short_rapid_mode_tags
+            + self.short_top_coins_mode_tags
+          )
+          for c in enter_tags
+        ) or not any(
+          c
+          in (
+            self.short_normal_mode_tags
+            + self.short_pump_mode_tags
+            + self.short_quick_mode_tags
+            + self.short_rebuy_mode_tags
+            + self.short_mode_tags
+            + self.short_rapid_mode_tags
+            + self.short_grind_mode_tags
+            + self.short_top_coins_mode_tags
+          )
+          for c in enter_tags
+        ):
+          return self.short_grind_adjust_trade_position_v2(
+            trade,
+            enter_tags,
+            current_time,
+            current_rate,
+            current_profit,
+            min_stake,
+            max_stake,
+            current_entry_rate,
+            current_exit_rate,
+            current_entry_profit,
+            current_exit_profit,
+          )
 
     return None
 
@@ -11623,6 +11638,8 @@ class NostalgiaForInfinityX6(IStrategy):
 
           # 5m down move, 1h high
           long_entry_logic.append((df["RSI_3"] > 5.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 70.0))
+          # 15m & 1h & 4h down move
+          long_entry_logic.append((df["RSI_3_15m"] > 5.0) | (df["RSI_3_1h"] > 5.0) | (df["RSI_3_4h"] > 25.0))
           # 15m down move, 1h high
           long_entry_logic.append((df["RSI_3_15m"] > 15.0) | (df["AROONU_14_1h"] < 75.0))
           # 1h & 4h down move
@@ -11989,9 +12006,17 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append((df["RSI_3"] > 3.0) | (df["RSI_3_15m"] > 15.0) | (df["AROONU_14_1h"] < 50.0))
           # 5m down move, 4h high
           long_entry_logic.append((df["RSI_3"] > 5.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 70.0))
+          # 5m & 4h down move, 4h still not low enough
+          long_entry_logic.append(
+            (df["RSI_3"] > 5.0) | (df["RSI_3_4h"] > 10.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 30.0)
+          )
           # 15m & 1h & 4h down move, 4h high
           long_entry_logic.append(
             (df["RSI_3_15m"] > 25.0) | (df["RSI_3_1h"] > 50.0) | (df["RSI_3_4h"] > 55.0) | (df["AROONU_14_4h"] < 80.0)
+          )
+          # 15m down move, 15m & 1h high
+          long_entry_logic.append(
+            (df["RSI_3_15m"] > 35.0) | (df["AROONU_14_15m"] < 70.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 50.0)
           )
           # 4h down move, 5m going down
           long_entry_logic.append((df["RSI_3_4h"] > 5.0) | (((df["EMA_12"] - df["EMA_26"]) / df["EMA_26"]) > -0.02))
@@ -13601,6 +13626,10 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append(df["RSI_3_4h"] > 10.0)
           # 5m down move, 1h high
           long_entry_logic.append((df["RSI_3"] > 3.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 70.0))
+          # 5m & 15m down move, 15m still not low enough
+          long_entry_logic.append(
+            (df["RSI_3"] > 3.0) | (df["RSI_3_15m"] > 15.0) | (df["STOCHRSIk_14_14_3_3_15m"] < 20.0)
+          )
           # 5m & 4h down move, 4h still high
           long_entry_logic.append(
             (df["RSI_3"] > 10.0) | (df["RSI_3_4h"] > 40.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 70.0)
@@ -14340,6 +14369,10 @@ class NostalgiaForInfinityX6(IStrategy):
           short_entry_logic.append(
             (df["RSI_3_15m"] < 95.0) | (df["STOCHRSIk_14_14_3_3_15m"] > 70.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 10.0)
           )
+          # 15m up move, 1h still not high enough, 4h low
+          short_entry_logic.append(
+            (df["RSI_3_15m"] < 95.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 70.0) | (df["AROONU_14_4h"] > 20.0)
+          )
           # 15m up move, 1h & 4h still not high enough
           short_entry_logic.append(
             (df["RSI_3_15m"] < 95.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 70.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 80.0)
@@ -14398,6 +14431,8 @@ class NostalgiaForInfinityX6(IStrategy):
           short_entry_logic.append(
             (df["RSI_3_15m"] < 85.0) | (df["RSI_3_1h"] < 70.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 30.0)
           )
+          # 1h up move, 4h low
+          short_entry_logic.append((df["RSI_3_1h"] < 95.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 30.0))
           # 1h & 4h up move, 4h still not high enough
           short_entry_logic.append((df["RSI_3_1h"] < 95.0) | (df["RSI_3_4h"] < 95.0) | (df["UO_7_14_28_4h"] > 60.0))
           # 1h & 4h up move, 4h still low
@@ -52977,7 +53012,7 @@ class NostalgiaForInfinityX6(IStrategy):
     grind_3_exit_order = None
     grind_3_exit_distance_ratio = 0.0
     for order in reversed(filled_orders):
-      if (order.ft_order_side == "buy") and (order is not filled_orders[0]):
+      if (order.ft_order_side == "sell") and (order is not filled_orders[0]):
         order_tag = ""
         if has_order_tags:
           if order.ft_order_tag is not None:
@@ -53030,7 +53065,7 @@ class NostalgiaForInfinityX6(IStrategy):
           if not grind_3_found:
             grind_3_distance_ratio = (exit_rate - order.safe_price) / order.safe_price
             grind_3_found = True
-      elif order.ft_order_side == "sell":
+      elif order.ft_order_side == "buy":
         if (
           order is filled_exits[-1]
           and (order.safe_remaining * exit_rate / (trade.leverage if self.is_futures_mode else 1.0)) > min_stake
@@ -53303,7 +53338,7 @@ class NostalgiaForInfinityX6(IStrategy):
         or (slice_profit > 0.06)
       )
       and (grind_1_sub_grind_count < grind_1_max_sub_grinds)
-      and (grind_1_sub_grind_count == 0 or (grind_1_distance_ratio < grind_1_sub_thresholds[grind_1_sub_grind_count]))
+      and (grind_1_sub_grind_count == 0 or (-grind_1_distance_ratio < grind_1_sub_thresholds[grind_1_sub_grind_count]))
     ):
       if current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake):
         buy_amount = slice_amount * grind_1_stakes[grind_1_sub_grind_count] / trade.leverage
@@ -53347,7 +53382,7 @@ class NostalgiaForInfinityX6(IStrategy):
           else:
             return -ft_sell_amount
 
-    # if (grind_1_sub_grind_count > 0) and (((exit_rate - grind_1_current_open_rate) / grind_1_current_open_rate) < grind_1_derisk_grinds):
+    # if (grind_1_sub_grind_count > 0) and ((-(exit_rate - grind_1_current_open_rate) / grind_1_current_open_rate) < grind_1_derisk_grinds):
     if (grind_1_sub_grind_count > 0) and (grind_1_current_grind_stake_profit < (slice_amount * grind_1_derisk_grinds)):
       sell_amount = grind_1_total_amount * exit_rate / trade.leverage
       if ((current_stake_amount / trade.leverage) - sell_amount) < (min_stake * 1.55):
@@ -53389,7 +53424,7 @@ class NostalgiaForInfinityX6(IStrategy):
         or (slice_profit > 0.06)
       )
       and (grind_2_sub_grind_count < grind_2_max_sub_grinds)
-      and (grind_2_sub_grind_count == 0 or (grind_2_distance_ratio < grind_2_sub_thresholds[grind_2_sub_grind_count]))
+      and (grind_2_sub_grind_count == 0 or (-grind_2_distance_ratio < grind_2_sub_thresholds[grind_2_sub_grind_count]))
     ):
       if current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake):
         buy_amount = slice_amount * grind_2_stakes[grind_2_sub_grind_count] / trade.leverage
@@ -53433,7 +53468,7 @@ class NostalgiaForInfinityX6(IStrategy):
           else:
             return -ft_sell_amount
 
-    # if (grind_2_sub_grind_count > 0) and (((exit_rate - grind_2_current_open_rate) / grind_2_current_open_rate) < grind_2_derisk_grinds):
+    # if (grind_2_sub_grind_count > 0) and ((-(exit_rate - grind_2_current_open_rate) / grind_2_current_open_rate) < grind_2_derisk_grinds):
     if (grind_2_sub_grind_count > 0) and (grind_2_current_grind_stake_profit < (slice_amount * grind_2_derisk_grinds)):
       sell_amount = grind_2_total_amount * exit_rate / trade.leverage
       if ((current_stake_amount / trade.leverage) - sell_amount) < (min_stake * 1.55):
@@ -53475,7 +53510,7 @@ class NostalgiaForInfinityX6(IStrategy):
         or (slice_profit > 0.06)
       )
       and (grind_3_sub_grind_count < grind_3_max_sub_grinds)
-      and (grind_3_sub_grind_count == 0 or (grind_3_distance_ratio < grind_3_sub_thresholds[grind_3_sub_grind_count]))
+      and (grind_3_sub_grind_count == 0 or (-grind_3_distance_ratio < grind_3_sub_thresholds[grind_3_sub_grind_count]))
     ):
       if current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake):
         buy_amount = slice_amount * grind_3_stakes[grind_3_sub_grind_count] / trade.leverage
@@ -53519,7 +53554,7 @@ class NostalgiaForInfinityX6(IStrategy):
           else:
             return -ft_sell_amount
 
-    # if (grind_3_sub_grind_count > 0) and (((exit_rate - grind_3_current_open_rate) / grind_3_current_open_rate) < grind_3_derisk_grinds):
+    # if (grind_3_sub_grind_count > 0) and ((-(exit_rate - grind_3_current_open_rate) / grind_3_current_open_rate) < grind_3_derisk_grinds):
     if (grind_3_sub_grind_count > 0) and (grind_3_current_grind_stake_profit < (slice_amount * grind_3_derisk_grinds)):
       sell_amount = grind_3_total_amount * exit_rate / trade.leverage
       if ((current_stake_amount / trade.leverage) - sell_amount) < (min_stake * 1.55):
@@ -53562,7 +53597,7 @@ class NostalgiaForInfinityX6(IStrategy):
       )
       and (buyback_1_current_open_rate == 0)
       and (
-        buyback_1_exit_distance_ratio
+        -buyback_1_exit_distance_ratio
         < (
           self.grinding_v2_buyback_1_distance_ratio_futures
           if self.is_futures_mode
@@ -53595,7 +53630,7 @@ class NostalgiaForInfinityX6(IStrategy):
           return buy_amount
 
     # if buyback_1_sub_grind_count > 0:
-    #   grind_profit = (exit_rate - buyback_1_current_open_rate) / buyback_1_current_open_rate
+    #   grind_profit = -(exit_rate - buyback_1_current_open_rate) / buyback_1_current_open_rate
     #   if (
     #     grind_profit
     #     > (
@@ -53627,7 +53662,7 @@ class NostalgiaForInfinityX6(IStrategy):
     #       else:
     #         return -ft_sell_amount
 
-    # if (buyback_1_sub_grind_count > 0) and (((exit_rate - buyback_1_current_open_rate) / buyback_1_current_open_rate) < (self.grinding_v2_buyback_1_derisk_futures if self.is_futures_mode else self.grinding_v2_buyback_1_derisk_spot)):
+    # if (buyback_1_sub_grind_count > 0) and ((-(exit_rate - buyback_1_current_open_rate) / buyback_1_current_open_rate) < (self.grinding_v2_buyback_1_derisk_futures if self.is_futures_mode else self.grinding_v2_buyback_1_derisk_spot)):
     if (buyback_1_sub_grind_count > 0) and (
       buyback_1_current_grind_stake_profit
       < (
@@ -53678,7 +53713,7 @@ class NostalgiaForInfinityX6(IStrategy):
       )
       and (buyback_2_current_open_rate == 0)
       and (
-        buyback_2_exit_distance_ratio
+        -buyback_2_exit_distance_ratio
         < (
           self.grinding_v2_buyback_2_distance_ratio_futures
           if self.is_futures_mode
@@ -53711,7 +53746,7 @@ class NostalgiaForInfinityX6(IStrategy):
           return buy_amount
 
     # if buyback_2_sub_grind_count > 0:
-    #   grind_profit = (exit_rate - buyback_2_current_open_rate) / buyback_2_current_open_rate
+    #   grind_profit = -(exit_rate - buyback_2_current_open_rate) / buyback_2_current_open_rate
     #   if (
     #     grind_profit
     #     > (
@@ -53743,7 +53778,7 @@ class NostalgiaForInfinityX6(IStrategy):
     #       else:
     #         return -ft_sell_amount
 
-    # if (buyback_2_sub_grind_count > 0) and (((exit_rate - buyback_2_current_open_rate) / buyback_2_current_open_rate) < (self.grinding_v2_buyback_2_derisk_futures if self.is_futures_mode else self.grinding_v2_buyback_2_derisk_spot)):
+    # if (buyback_2_sub_grind_count > 0) and ((-(exit_rate - buyback_2_current_open_rate) / buyback_2_current_open_rate) < (self.grinding_v2_buyback_2_derisk_futures if self.is_futures_mode else self.grinding_v2_buyback_2_derisk_spot)):
     if (buyback_2_sub_grind_count > 0) and (
       buyback_2_current_grind_stake_profit
       < (
@@ -53794,7 +53829,7 @@ class NostalgiaForInfinityX6(IStrategy):
       )
       and (buyback_3_current_open_rate == 0)
       and (
-        buyback_3_exit_distance_ratio
+        -buyback_3_exit_distance_ratio
         < (
           self.grinding_v2_buyback_3_distance_ratio_futures
           if self.is_futures_mode
@@ -53827,7 +53862,7 @@ class NostalgiaForInfinityX6(IStrategy):
           return buy_amount
 
     # if buyback_3_sub_grind_count > 0:
-    #   grind_profit = (exit_rate - buyback_3_current_open_rate) / buyback_3_current_open_rate
+    #   grind_profit = -(exit_rate - buyback_3_current_open_rate) / buyback_3_current_open_rate
     #   if (
     #     grind_profit
     #     > (
@@ -53859,7 +53894,7 @@ class NostalgiaForInfinityX6(IStrategy):
     #       else:
     #         return -ft_sell_amount
 
-    # if (buyback_3_sub_grind_count > 0) and (((exit_rate - buyback_3_current_open_rate) / buyback_3_current_open_rate) < (self.grinding_v2_buyback_3_derisk_futures if self.is_futures_mode else self.grinding_v2_buyback_3_derisk_spot)):
+    # if (buyback_3_sub_grind_count > 0) and ((-(exit_rate - buyback_3_current_open_rate) / buyback_3_current_open_rate) < (self.grinding_v2_buyback_3_derisk_futures if self.is_futures_mode else self.grinding_v2_buyback_3_derisk_spot)):
     if (buyback_3_sub_grind_count > 0) and (
       buyback_3_current_grind_stake_profit
       < (
