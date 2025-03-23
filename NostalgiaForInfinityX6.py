@@ -67,7 +67,7 @@ class NostalgiaForInfinityX6(IStrategy):
   INTERFACE_VERSION = 3
 
   def version(self) -> str:
-    return "v16.2.33"
+    return "v16.3.0"
 
   stoploss = -0.99
 
@@ -180,14 +180,14 @@ class NostalgiaForInfinityX6(IStrategy):
   # Based on the the first entry (regardless of rebuys)
   stop_threshold_spot = 0.10
   stop_threshold_futures = 0.10
-  stop_threshold_doom_spot = 0.12
-  stop_threshold_doom_futures = 0.12
+  stop_threshold_doom_spot = 0.20
+  stop_threshold_doom_futures = 0.20
   stop_threshold_spot_rebuy = 1.0
   stop_threshold_futures_rebuy = 3.0
-  stop_threshold_rapid_spot = 0.12
-  stop_threshold_rapid_futures = 0.12
-  stop_threshold_derisk_spot = 0.12
-  stop_threshold_derisk_futures = 0.12
+  stop_threshold_rapid_spot = 0.20
+  stop_threshold_rapid_futures = 0.20
+  stop_threshold_derisk_spot = 0.20
+  stop_threshold_derisk_futures = 0.20
 
   # user specified fees to be used for profit calculations
   custom_fee_open_rate = None
@@ -367,18 +367,18 @@ class NostalgiaForInfinityX6(IStrategy):
   grinding_v2_derisk_level_1_enable = True
   grinding_v2_derisk_level_1_spot = -0.06
   grinding_v2_derisk_level_1_futures = -0.06
-  grinding_v2_derisk_level_2_enable = False
-  grinding_v2_derisk_level_2_spot = -0.06
-  grinding_v2_derisk_level_2_futures = -0.06
-  grinding_v2_derisk_level_3_enable = False
-  grinding_v2_derisk_level_3_spot = -0.10
-  grinding_v2_derisk_level_3_futures = -0.10
+  grinding_v2_derisk_level_2_enable = True
+  grinding_v2_derisk_level_2_spot = -0.10
+  grinding_v2_derisk_level_2_futures = -0.10
+  grinding_v2_derisk_level_3_enable = True
+  grinding_v2_derisk_level_3_spot = -0.12
+  grinding_v2_derisk_level_3_futures = -0.12
   grinding_v2_derisk_level_1_stake_spot = 0.20
   grinding_v2_derisk_level_1_stake_futures = 0.20
-  grinding_v2_derisk_level_2_stake_spot = 0.20
-  grinding_v2_derisk_level_2_stake_futures = 0.20
-  grinding_v2_derisk_level_3_stake_spot = 0.20
-  grinding_v2_derisk_level_3_stake_futures = 0.20
+  grinding_v2_derisk_level_2_stake_spot = 0.30
+  grinding_v2_derisk_level_2_stake_futures = 0.30
+  grinding_v2_derisk_level_3_stake_spot = 0.50
+  grinding_v2_derisk_level_3_stake_futures = 0.50
   grinding_v2_derisk_global_enable = False
   grinding_v2_derisk_global_spot = -0.10
   grinding_v2_derisk_global_futures = -0.10
@@ -33687,6 +33687,32 @@ class NostalgiaForInfinityX6(IStrategy):
         and (last_candle["RSI_3_15m"] > 5.0)
         and (last_candle["STOCHRSIk_14_14_3_3"] < 20.0)
         and (last_candle["RSI_14"] < (last_candle["RSI_14_1h"] - 45.0))
+      )
+      or (
+        (last_candle["RSI_3"] > 10.0)
+        and (last_candle["RSI_3_15m"] > 10.0)
+        and (last_candle["RSI_3_1h"] > 10.0)
+        and (last_candle["RSI_3_4h"] > 10.0)
+        and (last_candle["RSI_3_1d"] > 10.0)
+        and (last_candle["STOCHRSIk_14_14_3_3"] < 20.0)
+        and (last_candle["close"] < (last_candle["SMA_30"] * 0.980))
+        and (last_candle["close"] < (last_candle["BBL_20_2.0"] * 0.999))
+      )
+      or (
+        (last_candle["RSI_14"] < 36.0)
+        and (last_candle["RSI_3"] > 5.0)
+        and (last_candle["RSI_3_15m"] > 10.0)
+        and (last_candle["RSI_3_1h"] > 10.0)
+        and (last_candle["RSI_3_4h"] > 10.0)
+        and (last_candle["RSI_3_1d"] > 10.0)
+        and (last_candle["STOCHRSIk_14_14_3_3"] < 30.0)
+        and (last_candle["close"] > (last_candle["close_max_48"] * 0.85))
+        and (last_candle["close"] > (last_candle["high_max_6_1h"] * 0.80))
+        and (last_candle["close"] > (last_candle["high_max_12_1h"] * 0.75))
+        and (last_candle["close"] < (last_candle["low_min_12_4h"] * 1.25))
+        and (last_candle["EMA_26"] > last_candle["EMA_12"])
+        and ((last_candle["EMA_26"] - last_candle["EMA_12"]) > (last_candle["open"] * 0.010))
+        and ((previous_candle["EMA_26"] - previous_candle["EMA_12"]) > (last_candle["open"] / 100.0))
       )
     ):
       return True
