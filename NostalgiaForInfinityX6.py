@@ -69,7 +69,7 @@ class NostalgiaForInfinityX6(IStrategy):
   INTERFACE_VERSION = 3
 
   def version(self) -> str:
-    return "v16.3.71"
+    return "v16.3.73"
 
   stoploss = -0.99
 
@@ -209,7 +209,7 @@ class NostalgiaForInfinityX6(IStrategy):
   u_e_stops_enable = False
 
   # Grinding
-  grinding_v1_max_stake = 1.40  # ratio of first entry
+  grinding_v1_max_stake = 1.0  # ratio of first entry
   derisk_use_grind_stops = False
 
   grind_1_stop_grinds_spot = -0.50
@@ -367,7 +367,7 @@ class NostalgiaForInfinityX6(IStrategy):
   regular_mode_derisk_1_derisk_mode_futures = -0.05
 
   # Grinding v2
-  grinding_v2_max_stake = 1.40  # ratio of first entry
+  grinding_v2_max_stake = 1.0  # ratio of first entry
 
   grinding_v2_derisk_level_1_enable = True
   grinding_v2_derisk_level_1_spot = -0.06
@@ -10037,10 +10037,10 @@ class NostalgiaForInfinityX6(IStrategy):
   # Correct Min Stake
   # ---------------------------------------------------------------------------------------------
   def correct_min_stake(self, min_stake: float) -> float:
-    if self.config["exchange"]["name"] in ["bybit"]:
-      if self.is_futures_mode:
-        if min_stake < 5.0:
-          min_stake = 5.0
+    # if self.config["exchange"]["name"] in ["bybit"]:
+    #   if self.is_futures_mode:
+    #     if min_stake < 5.0:
+    #       min_stake = 5.0
     return min_stake
 
   def is_backtest_mode(self) -> bool:
@@ -10842,6 +10842,10 @@ class NostalgiaForInfinityX6(IStrategy):
           )
           # 1h down move, 15m still not low enough, 4h still high
           long_entry_logic.append((df["RSI_3_1h"] > 20.0) | (df["AROONU_14_15m"] < 30.0) | (df["AROONU_14_4h"] < 50.0))
+          # 1h & 4h down move, 4h high
+          long_entry_logic.append(
+            (df["RSI_3_1h"] > 25.0) | (df["RSI_3_4h"] > 60.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 80.0)
+          )
           # 1h down move, drop but not yet near the previous lows
           long_entry_logic.append(
             (df["RSI_3_1h"] > 30.0)
@@ -11565,6 +11569,8 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append(
             (df["AROONU_14_15m"] < 50.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 50.0) | (df["ROC_9_1d"] < 80.0)
           )
+          # 15m high, 1h high
+          long_entry_logic.append((df["AROONU_14_15m"] < 85.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 90.0))
           # 15m still high, 1h & 4h high
           long_entry_logic.append(
             (df["STOCHRSIk_14_14_3_3_15m"] < 30.0) | (df["AROONU_14_1h"] < 80.0) | (df["AROONU_14_4h"] < 90.0)
@@ -11649,7 +11655,7 @@ class NostalgiaForInfinityX6(IStrategy):
           )
           # 15m & 1h down move, 1h still not low enough
           long_entry_logic.append(
-            (df["RSI_3_15m"] > 3.0) | (df["RSI_3_1h"] > 10.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 20.0)
+            (df["RSI_3_15m"] > 3.0) | (df["RSI_3_1h"] > 10.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 10.0)
           )
           # 15m down move, 4h still high
           long_entry_logic.append((df["RSI_3_15m"] > 3.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 50.0))
@@ -13285,6 +13291,8 @@ class NostalgiaForInfinityX6(IStrategy):
           short_entry_logic.append(
             (df["RSI_3"] < 90.0) | (df["STOCHRSIk_14_14_3_3_15m"] > 60.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 75.0)
           )
+          # 15m up move, 1h low
+          short_entry_logic.append((df["RSI_3_15m"] < 97.0) | (df["AROONU_14_1h"] > 30.0))
           # 15m up move, 15m stil not high enough, 1h low
           short_entry_logic.append(
             (df["RSI_3_15m"] < 95.0) | (df["STOCHRSIk_14_14_3_3_15m"] > 70.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 10.0)
