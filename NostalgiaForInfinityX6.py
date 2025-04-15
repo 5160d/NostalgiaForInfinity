@@ -69,7 +69,7 @@ class NostalgiaForInfinityX6(IStrategy):
   INTERFACE_VERSION = 3
 
   def version(self) -> str:
-    return "v16.3.77"
+    return "v16.3.84"
 
   stoploss = -0.99
 
@@ -10346,6 +10346,8 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append((df["RSI_3_15m"] > 5.0) | (df["RSI_3_4h"] > 15.0) | (df["AROONU_14_15m"] < 30.0))
           # 15m down move, 4h high
           long_entry_logic.append((df["RSI_3_15m"] > 5.0) | (df["AROONU_14_4h"] < 85.0))
+          # 15m & 4h down move, 15m still high
+          long_entry_logic.append((df["RSI_3_15m"] > 10.0) | (df["RSI_3_4h"] > 20.0) | (df["AROONU_14_15m"] < 50.0))
           # 15m down move, 4h high
           long_entry_logic.append((df["RSI_3_15m"] > 10.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 70.0))
           # 15m & 1h down move, 4h high
@@ -10398,6 +10400,8 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append((df["RSI_3_4h"] > 15.0) | (df["close"] > (df["close_max_12"] * 0.85)))
           # 5m down move, 1h still high
           long_entry_logic.append((df["RSI_14"] > 20.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 40.0))
+          # big drop in last 4 hours, 4h down move
+          long_entry_logic.append((df["close"] > (df["high_max_24_4h"] * 0.50)) | (df["RSI_3_4h"] > 10.0))
           # big drop in the last 30 days, 4h still high
           long_entry_logic.append(
             (df["close"] > (df["high_max_30_1d"] * 0.05)) | (df["STOCHRSIk_14_14_3_3_4h"] < 30.0)
@@ -10580,9 +10584,19 @@ class NostalgiaForInfinityX6(IStrategy):
           )
           # 4h down move, 15m still high
           long_entry_logic.append((df["RSI_3_4h"] > 5.0) | (df["STOCHRSIk_14_14_3_3_15m"] < 50.0))
+          # 4h still high, 4h moving lower, 4h overbought
+          long_entry_logic.append(
+            (df["AROONU_14_4h"] < 50.0) | (df["AROONU_14_4h"] > df["AROONU_14_4h"].shift(48)) | (df["ROC_9_4h"] < 40.0)
+          )
           # 4h overbought, drop but not yet near the previous lows in last 2 days
           long_entry_logic.append(
             (df["ROC_9_4h"] < 50.0)
+            | (df["close"] > (df["high_max_12_4h"] * 0.50))
+            | (df["close"] < (df["low_min_12_4h"] * 1.25))
+          )
+          # 1d overbought, drop but not yet near the previous lows in last 2 days
+          long_entry_logic.append(
+            (df["ROC_9_1d"] < 60.0)
             | (df["close"] > (df["high_max_12_4h"] * 0.50))
             | (df["close"] < (df["low_min_12_4h"] * 1.25))
           )
@@ -10888,6 +10902,12 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append(
             (df["AROONU_14_15m"] < 50.0) | (df["AROONU_14_1h"] < 90.0) | (df["AROONU_14_4h"] < 75.0)
           )
+          # 1d overbought, drop but not yet near the previous lows in last 2 days
+          long_entry_logic.append(
+            (df["ROC_9_1d"] < 60.0)
+            | (df["close"] > (df["high_max_12_4h"] * 0.50))
+            | (df["close"] < (df["low_min_12_4h"] * 1.25))
+          )
           # 1d overbought, drop but not yet near the previous lows in last 12 days
           long_entry_logic.append(
             (df["ROC_9_1d"] < 200.0)
@@ -10896,6 +10916,10 @@ class NostalgiaForInfinityX6(IStrategy):
           )
           # big drop in last 24 hours, 4h down move
           long_entry_logic.append((df["close"] > (df["high_max_24_1h"] * 0.50)) | (df["RSI_3_4h"] > 10.0))
+          # big drop in last 4 hours, 4h still not low enough
+          long_entry_logic.append(
+            (df["close"] > (df["high_max_24_4h"] * 0.50)) | (df["STOCHRSIk_14_14_3_3_4h"] < 30.0)
+          )
           # big drop in the last 12 days, 4h still high
           long_entry_logic.append((df["close"] > (df["high_max_12_1d"] * 0.25)) | (df["AROONU_14_4h"] < 50.0))
           # big drop in the last 30 days, 4h down move
@@ -10996,6 +11020,10 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append(
             (df["close"] > (df["high_max_24_1h"] * 0.50)) | (df["STOCHRSIk_14_14_3_3_1h"] < 40.0)
           )
+          # big drop in last 4 hours, 4h still not low enough
+          long_entry_logic.append(
+            (df["close"] > (df["high_max_24_4h"] * 0.50)) | (df["STOCHRSIk_14_14_3_3_4h"] < 30.0)
+          )
           # big drop in the last 30 days, 4h still high
           long_entry_logic.append(
             (df["close"] > (df["high_max_30_1d"] * 0.05)) | (df["STOCHRSIk_14_14_3_3_4h"] < 30.0)
@@ -11052,6 +11080,8 @@ class NostalgiaForInfinityX6(IStrategy):
           )
           # 15m & 1h down move, 1h still not low enough
           long_entry_logic.append((df["RSI_3_15m"] > 10.0) | (df["RSI_3_1h"] > 15.0) | (df["AROONU_14_1h"] < 20.0))
+          # 15m & 4h down move, 15m still high
+          long_entry_logic.append((df["RSI_3_15m"] > 10.0) | (df["RSI_3_4h"] > 20.0) | (df["AROONU_14_15m"] < 50.0))
           # 15m down move, 15m still not low enough, 1h still high
           long_entry_logic.append(
             (df["RSI_3_15m"] > 10.0) | (df["AROONU_14_15m"] < 30.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 50.0)
@@ -11182,6 +11212,8 @@ class NostalgiaForInfinityX6(IStrategy):
           )
           # 1d top wick, 4h still high
           long_entry_logic.append((df["top_wick_pct_1d"] < 50.0) | (df["AROONU_14_4h"] < 50.0))
+          # big drop in last 4 hours, 4h down move
+          long_entry_logic.append((df["close"] > (df["high_max_24_4h"] * 0.50)) | (df["RSI_3_4h"] > 10.0))
           # big drop in last 24 hours, 1h still high
           long_entry_logic.append(
             (df["close"] > (df["high_max_24_1h"] * 0.50)) | (df["STOCHRSIk_14_14_3_3_1h"] < 40.0)
@@ -11207,18 +11239,24 @@ class NostalgiaForInfinityX6(IStrategy):
           # Protections
           long_entry_logic.append(df["num_empty_288"] <= allowed_empty_candles_288)
 
+          # big drop in the last hour
+          long_entry_logic.append(df["close"] > (df["close_max_12"] * 0.50))
           # 5m down move, 15m still not low enough
           long_entry_logic.append((df["RSI_3"] > 3.0) | (df["STOCHRSIk_14_14_3_3_15m"] < 30.0))
           # 5m & 15m down move, 1h still high
           long_entry_logic.append((df["RSI_3"] > 3.0) | (df["RSI_3_15m"] > 15.0) | (df["AROONU_14_1h"] < 50.0))
-          # 5m & 1h down move, 4h still not low enough
-          long_entry_logic.append((df["RSI_3"] > 3.0) | (df["RSI_3_1h"] > 10.0) | (df["AROONU_14_4h"] < 20.0))
           # 5m & 15m down move, 4h still high
           long_entry_logic.append(
             (df["RSI_3"] > 3.0) | (df["RSI_3_15m"] > 15.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 50.0)
           )
+          # 5m & 1h down move, 4h still not low enough
+          long_entry_logic.append((df["RSI_3"] > 3.0) | (df["RSI_3_1h"] > 10.0) | (df["AROONU_14_4h"] < 20.0))
           # 5m & 1h down move, 4h still high
           long_entry_logic.append((df["RSI_3"] > 3.0) | (df["RSI_3_1h"] > 25.0) | (df["AROONU_14_4h"] < 50.0))
+          # 5m & 4h down move, 1h still not low enough
+          long_entry_logic.append(
+            (df["RSI_3"] > 3.0) | (df["RSI_3_4h"] > 10.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 10.0)
+          )
           # 5m down move, 4h high
           long_entry_logic.append((df["RSI_3"] > 5.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 70.0))
           # 5m & 15m down move, 4h high
@@ -11373,17 +11411,19 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append(
             (df["RSI_3_15m"] > 15.0) | (df["RSI_3_1h"] > 15.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 30.0)
           )
+          # 15m down move, 15m still not low enough, 1h high
+          long_entry_logic.append(
+            (df["RSI_3_15m"] > 15.0) | (df["RSI_3_1h"] > 30.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 80.0)
+          )
           # 15m & 1h down move, 4h still high
           long_entry_logic.append(
             (df["RSI_3_15m"] > 15.0) | (df["RSI_3_1h"] > 35.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 50.0)
           )
           # 15m & 4h down move, 15m still high
+          long_entry_logic.append((df["RSI_3_15m"] > 15.0) | (df["RSI_3_4h"] > 15.0) | (df["AROONU_14_15m"] < 30.0))
+          # 15m & 4h down move, 15m still high
           long_entry_logic.append(
             (df["RSI_3_15m"] > 15.0) | (df["RSI_3_4h"] > 15.0) | (df["STOCHRSIk_14_14_3_3_15m"] < 40.0)
-          )
-          # 15m down move, 15m still not low enough, 1h high
-          long_entry_logic.append(
-            (df["RSI_3_15m"] > 15.0) | (df["RSI_3_1h"] > 30.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 80.0)
           )
           # 15m down move, 4h stil high, 1d overbought
           long_entry_logic.append((df["RSI_3_15m"] > 15.0) | (df["AROONU_14_4h"] < 50.0) | (df["ROC_9_1d"] < 100.0))
@@ -11578,7 +11618,7 @@ class NostalgiaForInfinityX6(IStrategy):
             (df["AROONU_14_15m"] < 50.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 50.0) | (df["ROC_9_1d"] < 80.0)
           )
           # 15m high, 1h high
-          long_entry_logic.append((df["AROONU_14_15m"] < 85.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 90.0))
+          long_entry_logic.append((df["AROONU_14_15m"] < 85.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 80.0))
           # 15m still high, 1h & 4h high
           long_entry_logic.append(
             (df["STOCHRSIk_14_14_3_3_15m"] < 30.0) | (df["AROONU_14_1h"] < 80.0) | (df["AROONU_14_4h"] < 90.0)
@@ -11627,6 +11667,10 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append((df["top_wick_pct_1d"] < 50.0) | (df["AROONU_14_4h"] < 50.0))
           # big drop in last 48 hours, 4h down move
           long_entry_logic.append((df["close"] > (df["high_max_12_4h"] * 0.30)) | (df["RSI_3_4h"] > 15.0))
+          # big drop in the last 20 days, 4h still high
+          long_entry_logic.append(
+            (df["close"] > (df["high_max_20_1d"] * 0.25)) | (df["STOCHRSIk_14_14_3_3_4h"] < 30.0)
+          )
           # big drop in the last 30 days, 1h still high
           long_entry_logic.append(
             (df["close"] > (df["high_max_30_1d"] * 0.05)) | (df["STOCHRSIk_14_14_3_3_1h"] < 30.0)
@@ -11649,6 +11693,8 @@ class NostalgiaForInfinityX6(IStrategy):
           # Protections
           long_entry_logic.append(df["num_empty_288"] <= allowed_empty_candles_288)
 
+          # big drop in the last hour
+          long_entry_logic.append(df["close"] > (df["close_max_12"] * 0.50))
           # 5m down move, 15m still not low enough
           long_entry_logic.append((df["RSI_3"] > 3.0) | (df["STOCHRSIk_14_14_3_3_15m"] < 20.0))
           # 5m down move, 1h & 4h still high
@@ -11697,6 +11743,8 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append(
             (df["RSI_3_15m"] > 10.0) | (df["RSI_3_1h"] > 50.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 70.0)
           )
+          # 15m & 4h down move, 15m still high
+          long_entry_logic.append((df["RSI_3_15m"] > 10.0) | (df["RSI_3_4h"] > 20.0) | (df["AROONU_14_15m"] < 50.0))
           # 15m down move, 15m & 4h still high
           long_entry_logic.append(
             (df["RSI_3_15m"] > 10.0) | (df["AROONU_14_15m"] < 40.0) | (df["AROONU_14_4h"] < 50.0)
@@ -11746,6 +11794,10 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append((df["RSI_3_15m"] > 30.0) | (df["AROONU_14_1h"] < 70.0) | (df["ROC_9_1d"] < 100.0))
           # 15m down move, 1h & 4h high
           long_entry_logic.append((df["RSI_3_15m"] > 30.0) | (df["AROONU_14_1h"] < 80.0) | (df["AROONU_14_4h"] < 90.0))
+          # 15m down move, 15m high, 4h high
+          long_entry_logic.append(
+            (df["RSI_3_15m"] > 35.0) | (df["AROONU_14_15m"] < 70.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 70.0)
+          )
           # 1h & 4h down move, 4h still not low enough
           long_entry_logic.append(
             (df["RSI_3_1h"] > 5.0) | (df["RSI_3_4h"] > 10.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 20.0)
@@ -11828,6 +11880,10 @@ class NostalgiaForInfinityX6(IStrategy):
           )
           # big drop in last 24 hours, 4h down move
           long_entry_logic.append((df["close"] > (df["high_max_24_1h"] * 0.50)) | (df["RSI_3_4h"] > 10.0))
+          # big drop in last 4 hours, 4h still not low enough
+          long_entry_logic.append(
+            (df["close"] > (df["high_max_24_4h"] * 0.50)) | (df["STOCHRSIk_14_14_3_3_4h"] < 30.0)
+          )
           # big drop in the last 30 days, 1h downtrend
           long_entry_logic.append((df["close"] > (df["high_max_30_1d"] * 0.10)) | (df["RSI_3_1h"] > 10.0))
           # big drop in the last 30 days, 1h high
@@ -12006,6 +12062,10 @@ class NostalgiaForInfinityX6(IStrategy):
           )
           # big drop in the last 4 days, 1h down move
           long_entry_logic.append((df["close"] > (df["high_max_24_4h"] * 0.50)) | (df["RSI_3_1h"] > 15.0))
+          # big drop in last 4 hours, 4h still not low enough
+          long_entry_logic.append(
+            (df["close"] > (df["high_max_24_4h"] * 0.50)) | (df["STOCHRSIk_14_14_3_3_4h"] < 30.0)
+          )
           # big drop in the last 4 days, 1d high
           long_entry_logic.append((df["close"] > (df["high_max_24_4h"] * 0.50)) | (df["AROONU_14_1d"] < 75.0))
           # big drop in the last 6 days, 4h still high
