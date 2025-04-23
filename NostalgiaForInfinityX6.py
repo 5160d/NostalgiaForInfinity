@@ -69,7 +69,7 @@ class NostalgiaForInfinityX6(IStrategy):
   INTERFACE_VERSION = 3
 
   def version(self) -> str:
-    return "v16.4.13"
+    return "v16.4.19"
 
   stoploss = -0.99
 
@@ -592,6 +592,8 @@ class NostalgiaForInfinityX6(IStrategy):
     "long_entry_condition_41_enable": True,
     "long_entry_condition_42_enable": True,
     "long_entry_condition_43_enable": True,
+    "long_entry_condition_44_enable": True,
+    "long_entry_condition_45_enable": True,
     "long_entry_condition_101_enable": True,
     "long_entry_condition_102_enable": True,
     "long_entry_condition_120_enable": True,
@@ -605,7 +607,7 @@ class NostalgiaForInfinityX6(IStrategy):
     # Enable/Disable conditions
     # -------------------------------------------------------
     "short_entry_condition_501_enable": True,
-    # "short_entry_condition_502_enable": True,
+    "short_entry_condition_502_enable": True,
     # "short_entry_condition_503_enable": True,
     # "short_entry_condition_504_enable": True,
     # "short_entry_condition_541_enable": True,
@@ -2765,6 +2767,10 @@ class NostalgiaForInfinityX6(IStrategy):
     informative_15m["RSI_14_change_pct"] = (
       (informative_15m["RSI_14"] - informative_15m["RSI_14"].shift(1)) / (informative_15m["RSI_14"].shift(1))
     ) * 100.0
+    # EMA
+    informative_15m["EMA_12"] = pta.ema(informative_15m["close"], length=12)
+    informative_15m["EMA_20"] = pta.ema(informative_15m["close"], length=20)
+    informative_15m["EMA_26"] = pta.ema(informative_15m["close"], length=26)
     # MFI
     informative_15m["MFI_14"] = pta.mfi(
       informative_15m["high"], informative_15m["low"], informative_15m["close"], informative_15m["volume"], length=14
@@ -5582,6 +5588,10 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append((df["RSI_3_1h"] > 10.0) | (df["RSI_3_4h"] > 45.0) | (df["AROONU_14_4h"] < 70.0))
           # 1h down move, 1h high
           long_entry_logic.append((df["RSI_3_1h"] > 10.0) | (df["AROONU_14_1h"] < 70.0))
+          # 1h down move, 1h still not low enough, 4h high
+          long_entry_logic.append(
+            (df["RSI_3_1h"] > 10.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 20.0) | (df["AROONU_14_4h"] < 50.0)
+          )
           # 1h down move, 1h high
           long_entry_logic.append(
             (df["RSI_3_1h"] > 15.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 40.0) | (df["AROONU_14_1h"] < 80.0)
@@ -5982,6 +5992,184 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append(df["close"] < (df["EMA_20"] * 0.958))
           long_entry_logic.append(df["close"] < (df["BBL_20_2.0"] * 0.992))
 
+        # Condition #44 - Quick mode (Long).
+        if long_entry_condition_index == 44:
+          # Protections
+          long_entry_logic.append(df["num_empty_288"] <= allowed_empty_candles_288)
+
+          # 1h & 4h down move
+          long_entry_logic.append((df["RSI_3_1h"] > 3.0) | (df["RSI_3_4h"] > 15.0))
+          # 1h down move, 4h high
+          long_entry_logic.append((df["RSI_3_1h"] > 3.0) | (df["AROONU_14_4h"] < 50.0))
+          # 1h down move, 4h high
+          long_entry_logic.append((df["RSI_3_1h"] > 10.0) | (df["AROONU_14_4h"] < 70.0))
+          # 1h down move, 4h still high
+          long_entry_logic.append((df["RSI_3_1h"] > 10.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 50.0))
+          # 14 down move, 1h still high
+          long_entry_logic.append((df["RSI_3_1h"] > 15.0) | (df["AROONU_14_1h"] < 50.0))
+          # 1h down move, 1h still high
+          long_entry_logic.append((df["RSI_3_1h"] > 15.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 40.0))
+          # 1h down move, 4h high
+          long_entry_logic.append((df["RSI_3_1h"] > 20.0) | (df["AROONU_14_4h"] < 85.0))
+          # 1h down move, 4h high
+          long_entry_logic.append((df["RSI_3_1h"] > 20.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 80.0))
+          # 1d down move, 4h high
+          long_entry_logic.append((df["RSI_3_1d"] > 25.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 90.0))
+          # 1d top wick, 4h still high
+          long_entry_logic.append((df["top_wick_pct_1d"] < 50.0) | (df["AROONU_14_4h"] < 50.0))
+          # pump, drop but not yet near the previous lows
+          long_entry_logic.append(
+            (((df["high_max_24_4h"] - df["low_min_24_4h"]) / df["low_min_24_4h"]) < 2.0)
+            | (df["close"] > (df["high_max_6_4h"] * 0.75))
+            | (df["close"] < (df["low_min_24_4h"] * 1.25))
+          )
+          # pump, drop but not yet near the previous lows
+          long_entry_logic.append(
+            (((df["high_max_12_1d"] - df["low_min_12_1d"]) / df["low_min_12_1d"]) < 2.0)
+            | (df["close"] > (df["high_max_24_4h"] * 0.70))
+            | (df["close"] < (df["low_min_12_1d"] * 1.25))
+          )
+          # drop but not yet near the previous lows
+          long_entry_logic.append(
+            (df["close"] > (df["high_max_24_4h"] * 0.50)) | (df["close"] < (df["low_min_6_1d"] * 1.25))
+          )
+          # drop but not yet near the previous lows in last 12 days
+          long_entry_logic.append(
+            (df["close"] > (df["high_max_12_1d"] * 0.50)) | (df["close"] < (df["low_min_12_1d"] * 1.25))
+          )
+          # big drop in last hour
+          long_entry_logic.append(df["close"] > (df["close_max_12"] * 0.50))
+          # big drop in last hour, 1d down move
+          long_entry_logic.append((df["close"] > (df["close_max_12"] * 0.85)) | (df["RSI_3_1d"] > 15.0))
+          # big drop in the last 12 hours
+          long_entry_logic.append((df["close"] > (df["high_max_12_1h"] * 0.50)))
+          # big drop in the last 4 days, 1d overbought
+          long_entry_logic.append((df["close"] > (df["high_max_24_4h"] * 0.50)) | (df["ROC_9_1d"] < 100.0))
+          # big drop in the last 6 days, 1d down move
+          long_entry_logic.append((df["close"] > (df["high_max_6_1d"] * 0.30)) | (df["RSI_3_1d"] > 15.0))
+          # big drop in the last 20 days
+          long_entry_logic.append((df["close"] > (df["high_max_20_1d"] * 0.10)))
+          # big drop in the last 20 days, 1h down move
+          long_entry_logic.append((df["close"] > (df["high_max_20_1d"] * 0.30)) | (df["RSI_3_1h"] > 10.0))
+
+          # Logic
+          long_entry_logic.append(df["RSI_3"] < 40.0)
+          long_entry_logic.append(df["RSI_3_15m"] < 50.0)
+          long_entry_logic.append(df["AROONU_14_15m"] < 25.0)
+          long_entry_logic.append(df["AROOND_14_15m"] > 75.0)
+          long_entry_logic.append(df["STOCHRSIk_14_14_3_3_15m"] < 20.0)
+          long_entry_logic.append(df["EMA_26_15m"] > df["EMA_12_15m"])
+          long_entry_logic.append((df["EMA_26_15m"] - df["EMA_12_15m"]) > (df["open_15m"] * 0.046))  # 0.046
+          long_entry_logic.append((df["EMA_26_15m"].shift() - df["EMA_12_15m"].shift()) > (df["open_15m"] / 100.0))
+
+        # Condition #45 - Quick mode (Long).
+        if long_entry_condition_index == 45:
+          # Protections
+          long_entry_logic.append(df["num_empty_288"] <= allowed_empty_candles_288)
+
+          # 15m & 1h down move
+          long_entry_logic.append((df["RSI_3_15m"] > 5.0) | (df["RSI_3_1h"] > 15.0))
+          # 15m down move, 1h still not low enough
+          long_entry_logic.append((df["RSI_3_15m"] > 5.0) | (df["AROONU_14_1h"] < 30.0))
+          # 15m down move, 4h high
+          long_entry_logic.append((df["RSI_3_15m"] > 5.0) | (df["AROONU_14_4h"] < 90.0))
+          # 1h down move, 4h still not low enough
+          long_entry_logic.append((df["RSI_3_1h"] > 3.0) | (df["AROONU_14_4h"] < 30.0))
+          # 1h down move, 1h still not low enough
+          long_entry_logic.append((df["RSI_3_1h"] > 5.0) | (df["AROONU_14_1h"] < 30.0))
+          # 1h down move, 1h still not low enough
+          long_entry_logic.append((df["RSI_3_1h"] > 5.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 25.0))
+          # 1h & 4h down move
+          long_entry_logic.append((df["RSI_3_1h"] > 10.0) | (df["RSI_3_4h"] > 15.0))
+          # 1h down move, 1h still not low enough
+          long_entry_logic.append((df["RSI_3_1h"] > 10.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 25.0))
+          # 1h down move, 4h high
+          long_entry_logic.append((df["RSI_3_1h"] > 10.0) | (df["AROONU_14_4h"] < 85.0))
+          # 1h & 4h down move, 1d high
+          long_entry_logic.append(
+            (df["RSI_3_1h"] > 15.0) | (df["RSI_3_1h"] > 20.0) | (df["STOCHRSIk_14_14_3_3_1d"] < 70.0)
+          )
+          # 14 down move, 1h still high
+          long_entry_logic.append((df["RSI_3_1h"] > 15.0) | (df["AROONU_14_1h"] < 50.0))
+          # 14 down move, 1h still high
+          long_entry_logic.append((df["RSI_3_1h"] > 15.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 40.0))
+          # 1h down move, 4h high
+          long_entry_logic.append((df["RSI_3_1h"] > 20.0) | (df["AROONU_14_4h"] < 90.0))
+          # 1h down move, 4h still high
+          long_entry_logic.append((df["RSI_3_1h"] > 20.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 50.0))
+          # 1h & 4h down move, 1h high
+          long_entry_logic.append(
+            (df["RSI_3_1h"] > 25.0) | (df["RSI_3_4h"] > 30.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 60.0)
+          )
+          # 14 down move, 1h high
+          long_entry_logic.append((df["RSI_3_1h"] > 25.0) | (df["AROONU_14_1h"] < 70.0))
+          # 1h down move, 4h high
+          long_entry_logic.append((df["RSI_3_1h"] > 25.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 80.0))
+          # 1h down move, 4h high
+          long_entry_logic.append((df["RSI_3_1h"] > 30.0) | (df["RSI_14_4h"] < 80.0))
+          # 14 down move, 1h high
+          long_entry_logic.append((df["RSI_3_1h"] > 30.0) | (df["AROONU_14_1h"] < 80.0))
+          # 1h down move, 4h high
+          long_entry_logic.append((df["RSI_3_1h"] > 30.0) | (df["AROONU_14_4h"] < 80.0))
+          # 1h down move, 4h high
+          long_entry_logic.append((df["RSI_3_1h"] > 30.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 80.0))
+          # 1h down move, 1h & 4h high
+          long_entry_logic.append((df["RSI_3_1h"] > 45.0) | (df["AROONU_14_1h"] < 70.0) | (df["AROONU_14_4h"] < 90.0))
+          # 4h downmove, 4h still high
+          long_entry_logic.append((df["RSI_3_4h"] > 10.0) | (df["AROONU_14_4h"] < 40.0))
+          # 4h down move, 1h still not low enough
+          long_entry_logic.append((df["RSI_3_4h"] > 15.0) | (df["AROONU_14_1h"] < 30.0))
+          # 4h down move, 1d high
+          long_entry_logic.append((df["RSI_3_4h"] > 25.0) | (df["STOCHRSIk_14_14_3_3_1d"] < 90.0))
+          # 4h down move, 1h high
+          long_entry_logic.append((df["RSI_3_4h"] > 40.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 70.0))
+          # 4h down move, 4h still high
+          long_entry_logic.append((df["RSI_3_4h"] > 50.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 50.0))
+          # 4h down move, 4h high
+          long_entry_logic.append((df["RSI_3_4h"] > 55.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 80.0))
+          # 1d down move, 1h still not low enough
+          long_entry_logic.append((df["RSI_3_1d"] > 5.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 30.0))
+          # 1d down move, 1h still not low enough
+          long_entry_logic.append((df["RSI_3_1d"] > 15.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 30.0))
+          # 1d down move, 4h still high
+          long_entry_logic.append((df["RSI_3_1d"] > 15.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 50.0))
+          # 4h high & overbought
+          long_entry_logic.append((df["AROONU_14_4h"] < 90.0) | (df["ROC_9_4h"] < 80.0))
+          # pump, drop but not yet near the previous lows
+          long_entry_logic.append(
+            (((df["high_max_24_4h"] - df["low_min_24_4h"]) / df["low_min_24_4h"]) < 2.0)
+            | (df["close"] > (df["high_max_6_4h"] * 0.75))
+            | (df["close"] < (df["low_min_24_4h"] * 1.25))
+          )
+          # pump, drop but not yet near the previous lows
+          long_entry_logic.append(
+            (((df["high_max_12_1d"] - df["low_min_12_1d"]) / df["low_min_12_1d"]) < 2.0)
+            | (df["close"] > (df["high_max_24_4h"] * 0.70))
+            | (df["close"] < (df["low_min_12_1d"] * 1.25))
+          )
+          # big drop in last hour
+          long_entry_logic.append(df["close"] > (df["close_max_12"] * 0.50))
+          # big drop in last hour, 1d down move
+          long_entry_logic.append((df["close"] > (df["close_max_12"] * 0.80)) | (df["RSI_3_1d"] > 15.0))
+          # big drop in the last 12 hours, 4h still high
+          long_entry_logic.append((df["close"] > (df["high_max_12_1h"] * 0.50)) | (df["AROONU_14_4h"] < 50.0))
+          # big drop in the last 6 days, 1h still high
+          long_entry_logic.append((df["close"] > (df["high_max_6_1d"] * 0.25)) | (df["AROONU_14_1h"] < 50.0))
+          # big drop in the last 12 days, 1h down move
+          long_entry_logic.append((df["close"] > (df["high_max_12_1d"] * 0.45)) | (df["RSI_3_1h"] > 5.0))
+          # big drop in the last 12 days, 4h down move
+          long_entry_logic.append((df["close"] > (df["high_max_12_1d"] * 0.40)) | (df["RSI_3_4h"] > 15.0))
+          # big drop in the last 12 days, 1h still high
+          long_entry_logic.append((df["close"] > (df["high_max_12_1d"] * 0.25)) | (df["AROONU_14_1h"] < 75.0))
+          # big drop in the last 20 days, 1h down move
+          long_entry_logic.append((df["close"] > (df["high_max_20_1d"] * 0.25)) | (df["RSI_3_1h"] > 15.0))
+
+          # Logic
+          long_entry_logic.append(df["RSI_3"] < 50.0)
+          long_entry_logic.append(df["AROONU_14_15m"] < 25.0)
+          long_entry_logic.append(df["STOCHRSIk_14_14_3_3_15m"] < 20.0)
+          long_entry_logic.append(df["close_15m"] < (df["EMA_20_15m"] * 0.920))
+
         # Condition #101 - Rapid mode (Long).
         if long_entry_condition_index == 101:
           # Protections
@@ -6337,6 +6525,8 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append(
             (df["RSI_3_15m"] > 20.0) | (df["RSI_3_1d"] > 20.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 90.0)
           )
+          # 15m down move, 15m still not low enough, 4h high
+          long_entry_logic.append((df["RSI_3_15m"] > 20.0) | (df["RSI_14_15m"] < 35.0) | (df["RSI_14_4h"] < 85.0))
           # 15m down move, 15m still not low enough, 1h high
           long_entry_logic.append(
             (df["RSI_3_15m"] > 20.0) | (df["AROONU_14_15m"] < 30.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 80.0)
@@ -6917,228 +7107,90 @@ class NostalgiaForInfinityX6(IStrategy):
           # Protections
           short_entry_logic.append(df["num_empty_288"] <= allowed_empty_candles_288)
 
-          # 5m strong down move
-          short_entry_logic.append((df["RSI_3"] < 98.0) | (df["ROC_9"] < 50.0))
-          # 5m down move, 1h still high, 4h down move
+          # 5m & 15m strong up move
+          short_entry_logic.append((df["RSI_3"] < 95.0) | (df["RSI_3_15m"] < 95.0))
+          # 5m up move, 4h low
+          short_entry_logic.append((df["RSI_3"] < 90.0) | (df["AROONU_14_4h"] > 20.0))
+          # 15m up move, 1h still low
+          short_entry_logic.append((df["RSI_3_15m"] < 97.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 60.0))
+          # 15m & 1h & 4h up move
+          short_entry_logic.append((df["RSI_3_15m"] < 95.0) | (df["RSI_3_1h"] < 90.0) | (df["RSI_3_4h"] < 85.0))
+          # 15m up move, 1h still low
+          short_entry_logic.append((df["RSI_3_15m"] < 95.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 40.0))
+          # 15m up move, 4h still not high enough
+          short_entry_logic.append((df["RSI_3_15m"] < 95.0) | (df["AROONU_14_4h"] > 70.0))
+          # 15m & 1h & 4h up move
+          short_entry_logic.append((df["RSI_3_15m"] < 90.0) | (df["RSI_3_1h"] < 90.0) | (df["RSI_3_4h"] < 90.0))
+          # 15m up move, 1h low
+          short_entry_logic.append((df["RSI_3_15m"] < 85.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 30.0))
+          # 15m up move, 1h low
+          short_entry_logic.append((df["RSI_3_15m"] < 80.0) | (df["AROONU_14_1h"] > 10.0))
+          # 15m up move, 4h still low
+          short_entry_logic.append((df["RSI_3_15m"] < 80.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 30.0))
+          # 1h up move, 1h still not high enough
+          short_entry_logic.append((df["RSI_3_1h"] < 95.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 70.0))
+          # 1h up move, 1d low
+          short_entry_logic.append((df["RSI_3_1h"] < 95.0) | (df["RSI_14_1d"] > 40.0))
+          # 1h up move, relative stable before the hour
+          short_entry_logic.append((df["RSI_3_1h"] < 95.0) | (df["close_min_12"] > (df["close_min_48"] * 1.10)))
+          # 1h up move, 1d low
+          short_entry_logic.append((df["RSI_3_1h"] < 90.0) | (df["STOCHRSIk_14_14_3_3_1d"] > 10.0))
+          # 1h up move, 4h still low
+          short_entry_logic.append((df["RSI_3_1h"] < 85.0) | (df["AROONU_14_4h"] > 50.0))
+          # 1h up move, 1h still not high enough
+          short_entry_logic.append((df["RSI_3_1h"] < 80.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 70.0))
+          # 1h up move, 4h low
+          short_entry_logic.append((df["RSI_3_1h"] < 80.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 20.0))
+          # 1h up move, 4h low
+          short_entry_logic.append((df["RSI_3_1h"] < 80.0) | (df["AROONU_14_4h"] > 10.0))
+          # 1h up move, 1h still low
+          short_entry_logic.append((df["RSI_3_1h"] < 75.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 50.0))
+          # 1h up move, 4h low
+          short_entry_logic.append((df["RSI_3_1h"] < 70.0) | (df["RSI_14_4h"] > 40.0))
+          # 4h up move, 1h still not high enough
+          short_entry_logic.append((df["RSI_3_4h"] < 95.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 70.0))
+          # 4h up move, 4h still not high enough
+          short_entry_logic.append((df["RSI_3_4h"] < 95.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 80.0))
+          # 4h up move, 15m still low
+          short_entry_logic.append((df["RSI_3_4h"] < 90.0) | (df["STOCHRSIk_14_14_3_3_15m"] > 50.0))
+          # 4h up move, 4h still not high enough
+          short_entry_logic.append((df["RSI_3_4h"] < 90.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 75.0))
+          # 4h up move, 4h still not high enough
+          short_entry_logic.append((df["RSI_3_4h"] < 85.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 70.0))
+          # 4h up move, 1h low
+          short_entry_logic.append((df["RSI_3_4h"] < 75.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 20.0))
+          # 1d up move, 1h still not high enough
+          short_entry_logic.append((df["RSI_3_1d"] < 95.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 90.0))
+          # 1d up move, 1h still low
+          short_entry_logic.append((df["RSI_3_1d"] < 90.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 50.0))
+          # 1d up move, 4h still low
+          short_entry_logic.append((df["RSI_3_1d"] < 80.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 40.0))
+          # 15m low, 1h still low
+          short_entry_logic.append((df["AROONU_14_15m"] > 20.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 50.0))
+          # 15m still low, 1h low
+          short_entry_logic.append((df["AROONU_14_15m"] > 50.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 30.0))
+          # 15m still not high enough, 4h low
+          short_entry_logic.append((df["STOCHRSIk_14_14_3_3_15m"] > 70.0) | (df["AROONU_14_4h"] > 10.0))
+          # 1h & 4h low
+          short_entry_logic.append((df["AROONU_14_1h"] > 20.0) | (df["AROONU_14_4h"] > 20.0))
+          # 1h & 4h low
+          short_entry_logic.append((df["AROONU_14_1h"] > 20.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 20.0))
+          # 1h low, 1d low
+          short_entry_logic.append((df["AROONU_14_1h"] > 30.0) | (df["STOCHRSIk_14_14_3_3_1d"] > 30.0))
+          # 1h & 4h low
+          short_entry_logic.append((df["STOCHRSIk_14_14_3_3_1h"] > 20.0) | (df["AROONU_14_4h"] > 20.0))
+          # 1d big green, 1d still not high enough
+          short_entry_logic.append((df["change_pct_1d"] < 30.0) | (df["RSI_14_1d"] > 65.0))
+          # rise in the last hour, relatively stable before the hour
           short_entry_logic.append(
-            (df["RSI_3"] < 90.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 50.0) | (df["RSI_3_4h"] < 90.0)
-          )
-          # 15m downmove, 4h overbought
-          short_entry_logic.append((df["RSI_3_change_pct_15m"] < 40.0) | (df["RSI_14_4h"] > 25.0))
-          # 5m & 15m & 1h down move
-          short_entry_logic.append((df["RSI_3"] < 95.0) | (df["RSI_3_15m"] < 90.0) | (df["RSI_3_1h"] < 85.0))
-          # 5m down move, 4h high
-          short_entry_logic.append((df["RSI_3"] < 90.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 25.0))
-          # 5m down move, 15m still high, 1h high
-          short_entry_logic.append(
-            (df["RSI_3"] < 90.0) | (df["AROOND_14_15m"] < 50.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 10.0)
-          )
-          # 15m & 1h down move, 4h still high
-          short_entry_logic.append((df["RSI_3_15m"] < 98.0) | (df["RSI_3_1h"] < 85.0) | (df["MFI_14_4h"] > 50.0))
-          # 15m & 1h down move, 4h down
-          short_entry_logic.append((df["RSI_3_15m"] < 98.0) | (df["RSI_3_1h"] < 90.0) | (df["ROC_9_4h"] < 10.0))
-          # 15m down move, 1h high
-          short_entry_logic.append((df["RSI_3_15m"] < 95.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 50.0))
-          # 15m down move, 15m still not low enough, 1h & 4h still not low enough
-          short_entry_logic.append(
-            (df["RSI_3_15m"] < 95.0)
-            | (df["AROOND_14_15m"] < 25.0)
-            | (df["STOCHRSIk_14_14_3_3_1h"] > 75.0)
-            | (df["MFI_14_4h"] > 50.0)
-          )
-          # 15m & 1h down move, 4h still high
-          short_entry_logic.append(
-            (df["RSI_3_15m"] < 90.0) | (df["RSI_3_1h"] < 90.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 50.0)
-          )
-          # 15m & 1h down move, 4h still high
-          short_entry_logic.append(
-            (df["RSI_3_15m"] < 95.0) | (df["RSI_3_1h"] < 85.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 30.0)
-          )
-          # 15m & 4h down move, 4h still not low enough
-          short_entry_logic.append(
-            (df["RSI_3_15m"] < 95.0) | (df["RSI_3_4h"] < 80.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 60.0)
-          )
-          # 15m down move, 1h high
-          short_entry_logic.append((df["RSI_3_15m"] < 85.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 10.0))
-          # 15m down move, 1h still high, 4h overbought
-          short_entry_logic.append((df["RSI_3_15m"] < 80.0) | (df["RSI_14_1h"] > 60.0) | (df["RSI_14_4h"] > 20.0))
-          # 15m down move, 1h high
-          short_entry_logic.append((df["RSI_3_15m"] < 90.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 30.0))
-          # 15m down move, 1h low, 4h still high
-          short_entry_logic.append(
-            (df["RSI_3_15m"] < 85.0) | (df["ROC_9_1h"] < 20.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 50.0)
-          )
-          # 15m down move, 1h & 4h high
-          short_entry_logic.append(
-            (df["RSI_3_15m"] < 75.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 10.0) | (df["RSI_3_4h"] > 10.0)
-          )
-          # 15m down move, 1h high, 1d low
-          short_entry_logic.append(
-            (df["RSI_3_change_pct_15m"] < 40.0) | (df["ROC_9_1h"] > -10.0) | (df["ROC_9_1d"] < 50.0)
-          )
-          # 15m down move, 4h high, 1d low
-          short_entry_logic.append(
-            (df["ROC_9_15m"] < 5.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 30.0) | (df["ROC_9_1d"] < 50.0)
-          )
-          # 15m down move, 4h high, 1d low
-          short_entry_logic.append((df["RSI_3_15m"] < 90.0) | (df["ROC_9_4h"] > -20.0) | (df["ROC_9_1d"] < 50.0))
-          # 15m down move, 1h still high, 1d high
-          short_entry_logic.append((df["RSI_3_15m"] < 85.0) | (df["RSI_14_1h"] > 60.0) | (df["ROC_9_1d"] > -50.0))
-          # 15m & 1h down move, 1d overbought
-          short_entry_logic.append((df["RSI_3_15m"] < 80.0) | (df["ROC_9_1h"] < 20.0) | (df["ROC_9_1d"] > -40.0))
-          # 15m down move, 1h high, 4h downtrend
-          short_entry_logic.append(
-            (df["RSI_3_15m"] < 80.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 10.0) | (df["ROC_9_4h"] < 10.0)
-          )
-          # 15m & 1h & 4h down move
-          short_entry_logic.append((df["RSI_3_15m"] < 90.0) | (df["CMF_20_1h"] < 0.4) | (df["RSI_3_4h"] < 90.0))
-          # 14m down move, 4h downtrend, 1d overbought
-          short_entry_logic.append((df["RSI_3_15m"] < 85.0) | (df["ROC_9_4h"] < 15.0) | (df["ROC_9_1d"] > -100.0))
-          # 15m strong downtrend, 1h downtrend
-          short_entry_logic.append((df["RSI_3_15m"] < 90.0) | (df["MFI_14_15m"] < 95.0) | (df["RSI_3_1h"] < 95.0))
-          # 15m down move, 4h overbought & high
-          short_entry_logic.append(
-            (df["RSI_3_15m"] < 95.0) | (df["ROC_9_4h"] > -15.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 50.0)
-          )
-          # 15m down move, 1h & 4h still high
-          short_entry_logic.append(
-            (df["RSI_3_15m"] < 85.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 50.0) | (df["UO_7_14_28_4h"] > 50.0)
-          )
-          # 15m down move, 15m not low enough, 1h overbought
-          short_entry_logic.append(
-            (df["RSI_14_change_pct_15m"] < 40.0) | (df["STOCHRSIk_14_14_3_3_15m"] > 90.0) | (df["RSI_14_1h"] > 30.0)
-          )
-          # 15m still not low enough, 4h & 1d going down
-          short_entry_logic.append((df["AROOND_14_15m"] < 25.0) | (df["RSI_3_4h"] < 80.0) | (df["RSI_3_1d"] < 70.0))
-          # 15m still not low enough, 4h overbought
-          short_entry_logic.append(
-            (df["AROOND_14_15m"] < 25.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 10.0) | (df["ROC_9_4h"] > -40.0)
-          )
-          # 15m still not low enough, 1h overbought
-          short_entry_logic.append((df["AROOND_14_15m"] < 25.0) | (df["RSI_14_1h"] > 10.0))
-          # 1h strong down move
-          short_entry_logic.append((df["RSI_3_1h"] < 95.0) | (df["RSI_3_change_pct_1h"] < 85.0))
-          # 1h & 4h down move, 4h still not low enough
-          short_entry_logic.append(
-            (df["RSI_3_1h"] < 95.0) | (df["RSI_3_4h"] < 85.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 70.0)
-          )
-          # 1h down move, 1d strong downtrend
-          short_entry_logic.append((df["RSI_3_1h"] < 90.0) | (df["RSI_3_1d"] < 95.0))
-          # 1h down move, 1h still not low enough, 4h still not low
-          short_entry_logic.append(
-            (df["RSI_3_1h"] < 90.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 70.0) | (df["RSI_14_4h"] > 50.0)
-          )
-          # 1h & 4h down move, 4h still not low enough, 1d still high
-          short_entry_logic.append(
-            (df["RSI_3_1h"] < 90.0)
-            | (df["RSI_3_change_pct_4h"] < 50.0)
-            | (df["AROOND_14_4h"] < 25.0)
-            | (df["STOCHRSIk_14_14_3_3_1d"] > 60.0)
-          )
-          # 1h down move, 4h still not low enough, 1d overbought
-          short_entry_logic.append((df["RSI_3_1h"] < 90.0) | (df["AROOND_14_4h"] < 25.0) | (df["ROC_9_1d"] > -120.0))
-          # 1h down move, 4h overbought
-          short_entry_logic.append((df["RSI_3_1h"] < 85.0) | (df["RSI_14_4h"] > 25.0))
-          # 1h P&D, 1d downtrend
-          short_entry_logic.append(
-            (df["RSI_3_1h"] < 70.0) | (df["RSI_3_1h"].shift(12) > 20.0) | (df["ROC_9_1d"] < 20.0)
-          )
-          # 4h P&D
-          short_entry_logic.append((df["RSI_3_4h"] < 70.0) | (df["RSI_3_4h"].shift(48) > 5.0))
-          # 4h strong downtrend
-          short_entry_logic.append((df["RSI_3_4h"] < 95.0) | (df["ROC_9_4h"] < 40.0))
-          # 1h stil high, 1d overbought
-          short_entry_logic.append(
-            (df["STOCHRSIk_14_14_3_3_1h"] > 50.0) | (df["STOCHRSIk_14_14_3_3_1d"] > 5.0) | (df["ROC_9_1d"] > -100.0)
-          )
-          # 1h & 4h still high, 1d strong down move
-          short_entry_logic.append(
-            (df["STOCHRSIk_14_14_3_3_1h"] > 50.0) | (df["UO_7_14_28_4h"] > 55.0) | (df["RSI_3_1d"] < 90.0)
-          )
-          # 5m down, 1h down move, 4h high
-          short_entry_logic.append(
-            (df["ROC_9"] > -5.0) | (df["RSI_3_change_pct_1h"] < 50.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 50.0)
-          )
-          # 15m down move, 4h pumped and going down
-          short_entry_logic.append((df["ROC_9_15m"] < 10.0) | (df["ROC_2_4h"] > -5.0) | (df["ROC_9_4h"] > -20.0))
-          # 14m down move, 4h high
-          short_entry_logic.append(
-            (df["ROC_9_15m"] < 10.0) | (df["STOCHRSIk_14_14_3_3_4h"] > 30.0) | (df["ROC_9_4h"] > -35.0)
-          )
-          # 1h downtrend, 4h overbought
-          short_entry_logic.append(
-            (df["ROC_2_1h"] < 5.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 95.0) | (df["ROC_9_4h"] < 70.0)
-          )
-          # 1h downtrend, 4h overbought
-          short_entry_logic.append((df["ROC_2_1h"] < 5.0) | (df["ROC_9_1h"] < 5.0) | (df["ROC_9_4h"] > -35.0))
-          # 1h down, 1d strong downtrend
-          short_entry_logic.append((df["ROC_9_1h"] < 10.0) | (df["ROC_9_1d"] < 50.0))
-          # 1h & 4h & 1d downtrend
-          short_entry_logic.append((df["ROC_9_1h"] < 10.0) | (df["ROC_9_4h"] < 20.0) | (df["ROC_9_1d"] < 40.0))
-          # 1h down, 1d overbought
-          short_entry_logic.append((df["ROC_9_1h"] < 10.0) | (df["ROC_9_1d"] > -80.0))
-          # 4h P&D
-          short_entry_logic.append((df["ROC_2_4h"] < 20.0) | (df["ROC_9_4h"] > -80.0))
-          # 4h overbought, 1h still high, 1d downtrend
-          short_entry_logic.append(
-            (df["ROC_9_4h"] > -50.0) | (df["STOCHRSIk_14_14_3_3_1h"] > 70.0) | (df["ROC_9_1d"] < 50.0)
-          )
-          # 1d P&D
-          short_entry_logic.append((df["ROC_2_1d"] < 20.0) | (df["ROC_9_1d"] > -50.0))
-          # 1d strong downtrend
-          short_entry_logic.append((df["ROC_2_1d"] < 20.0) | (df["ROC_9_1d"] < 50.0))
-          # 1h red, previous 1h green, 1h overbought
-          short_entry_logic.append(
-            (df["change_pct_1h"] < 5.0) | (df["change_pct_1h"].shift(12) > -5.0) | (df["RSI_14_1h"].shift(12) < 80.0)
-          )
-          # 1h red, previous 1h green, 1h overbought
-          short_entry_logic.append(
-            (df["change_pct_1h"] < 2.0) | (df["change_pct_1h"].shift(12) > -10.0) | (df["RSI_14_1h"].shift(12) < 80.0)
-          )
-          short_entry_logic.append(
-            (df["change_pct_1h"] < 5.0) | (df["change_pct_1h"].shift(12) > -5.0) | (df["ROC_9_1d"] < 50.0)
-          )
-          # 1h red, 4h green, 1h overbought
-          short_entry_logic.append(
-            (df["change_pct_1h"] < 5.0) | (df["change_pct_4h"] > -10.0) | (df["RSI_14_1h"].shift(12) > 30.0)
-          )
-          # 4h red, previous 4h green, 4h still high
-          short_entry_logic.append(
-            (df["change_pct_4h"] < 5.0)
-            | (df["change_pct_4h"].shift(48) > -5.0)
-            | (df["STOCHRSIk_14_14_3_3_4h"] > 50.0)
-          )
-          # 4h red, previous 4h green, 4h overbought
-          short_entry_logic.append(
-            (df["change_pct_4h"] < 8.0) | (df["change_pct_4h"].shift(48) > -8.0) | (df["RSI_14_4h"].shift(48) > 20.0)
-          )
-          # 4h red, previous 4h green, 15m down move
-          short_entry_logic.append(
-            (df["change_pct_4h"] < 8.0) | (df["change_pct_4h"].shift(48) > -8.0) | (df["RSI_3_15m"] < 95.0)
-          )
-          # 1d P&D, 1d overbought
-          short_entry_logic.append(
-            (df["change_pct_1d"] < 10.0) | (df["change_pct_1d"].shift(288) > -10.0) | (df["ROC_9_1d"] > -100.0)
-          )
-          # 1d P&D, 5m & 1h down move
-          short_entry_logic.append(
-            (df["change_pct_1d"] < 10.0)
-            | (df["change_pct_1d"].shift(288) > 10.0)
-            | (df["RSI_3_15m"] < 90.0)
-            | (df["change_pct_1h"] < 5.0)
-          )
-          # 1d P&D, 15m & 1h still not low enough
-          short_entry_logic.append(
-            (df["change_pct_1d"] < 20.0)
-            | (df["change_pct_1d"].shift(288) > -20.0)
-            | (df["AROOND_14_15m"] < 50.0)
-            | (df["STOCHRSIk_14_14_3_3_1h"] > 50.0)
+            (df["close"] < (df["close_min_12"] * 1.10)) | (df["close_min_12"] > (df["close_min_48"] * 1.10))
           )
 
           # Logic
           short_entry_logic.append(df["AROOND_14"] < 25.0)
           short_entry_logic.append(df["STOCHRSIk_14_14_3_3"] > 80.0)
-          short_entry_logic.append(df["close"] > (df["EMA_20"] * 1.056))
+          short_entry_logic.append(df["close"] > (df["EMA_20"] * 1.060))
+          long_entry_logic.append(df["AROOND_14_15m"] < 25.0)
 
         # Condition #503 - Normal mode (Short).
         if short_entry_condition_index == 503:
@@ -25601,6 +25653,9 @@ class NostalgiaForInfinityX6(IStrategy):
       + grind_3_current_grind_stake_profit
     )
 
+    # not reached the max allowed stake for all grinds
+    is_not_trade_max_stake = current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake)
+
     # De-risk level 1
     if (
       self.derisk_enable
@@ -25754,24 +25809,24 @@ class NostalgiaForInfinityX6(IStrategy):
       )
       and (grind_1_sub_grind_count < grind_1_max_sub_grinds)
       and (grind_1_sub_grind_count == 0 or (grind_1_distance_ratio < grind_1_sub_thresholds[grind_1_sub_grind_count]))
+      and is_not_trade_max_stake
     ):
-      if current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake):
-        buy_amount = slice_amount * grind_1_stakes[grind_1_sub_grind_count] / trade.leverage
-        if buy_amount < (min_stake * 1.5):
-          buy_amount = min_stake * 1.5
-        if buy_amount > max_stake:
-          return None
-        self.dp.send_msg(
-          f"Grinding entry (grind_1_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        log.info(
-          f"Grinding entry (grind_1_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        order_tag = "grind_1_entry"
-        if has_order_tags:
-          return buy_amount, order_tag
-        else:
-          return buy_amount
+      buy_amount = slice_amount * grind_1_stakes[grind_1_sub_grind_count] / trade.leverage
+      if buy_amount < (min_stake * 1.5):
+        buy_amount = min_stake * 1.5
+      if buy_amount > max_stake:
+        return None
+      self.dp.send_msg(
+        f"Grinding entry (grind_1_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      log.info(
+        f"Grinding entry (grind_1_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      order_tag = "grind_1_entry"
+      if has_order_tags:
+        return buy_amount, order_tag
+      else:
+        return buy_amount
 
     if grind_1_sub_grind_count > 0:
       grind_profit = (exit_rate - grind_1_current_open_rate) / grind_1_current_open_rate
@@ -25844,24 +25899,24 @@ class NostalgiaForInfinityX6(IStrategy):
       )
       and (grind_2_sub_grind_count < grind_2_max_sub_grinds)
       and (grind_2_sub_grind_count == 0 or (grind_2_distance_ratio < grind_2_sub_thresholds[grind_2_sub_grind_count]))
+      and is_not_trade_max_stake
     ):
-      if current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake):
-        buy_amount = slice_amount * grind_2_stakes[grind_2_sub_grind_count] / trade.leverage
-        if buy_amount < (min_stake * 1.5):
-          buy_amount = min_stake * 1.5
-        if buy_amount > max_stake:
-          return None
-        self.dp.send_msg(
-          f"Grinding entry (grind_2_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        log.info(
-          f"Grinding entry (grind_2_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        order_tag = "grind_2_entry"
-        if has_order_tags:
-          return buy_amount, order_tag
-        else:
-          return buy_amount
+      buy_amount = slice_amount * grind_2_stakes[grind_2_sub_grind_count] / trade.leverage
+      if buy_amount < (min_stake * 1.5):
+        buy_amount = min_stake * 1.5
+      if buy_amount > max_stake:
+        return None
+      self.dp.send_msg(
+        f"Grinding entry (grind_2_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      log.info(
+        f"Grinding entry (grind_2_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      order_tag = "grind_2_entry"
+      if has_order_tags:
+        return buy_amount, order_tag
+      else:
+        return buy_amount
 
     if grind_2_sub_grind_count > 0:
       grind_profit = (exit_rate - grind_2_current_open_rate) / grind_2_current_open_rate
@@ -25934,24 +25989,24 @@ class NostalgiaForInfinityX6(IStrategy):
       )
       and (grind_3_sub_grind_count < grind_3_max_sub_grinds)
       and (grind_3_sub_grind_count == 0 or (grind_3_distance_ratio < grind_3_sub_thresholds[grind_3_sub_grind_count]))
+      and is_not_trade_max_stake
     ):
-      if current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake):
-        buy_amount = slice_amount * grind_3_stakes[grind_3_sub_grind_count] / trade.leverage
-        if buy_amount < (min_stake * 1.5):
-          buy_amount = min_stake * 1.5
-        if buy_amount > max_stake:
-          return None
-        self.dp.send_msg(
-          f"Grinding entry (grind_3_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        log.info(
-          f"Grinding entry (grind_3_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        order_tag = "grind_3_entry"
-        if has_order_tags:
-          return buy_amount, order_tag
-        else:
-          return buy_amount
+      buy_amount = slice_amount * grind_3_stakes[grind_3_sub_grind_count] / trade.leverage
+      if buy_amount < (min_stake * 1.5):
+        buy_amount = min_stake * 1.5
+      if buy_amount > max_stake:
+        return None
+      self.dp.send_msg(
+        f"Grinding entry (grind_3_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      log.info(
+        f"Grinding entry (grind_3_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      order_tag = "grind_3_entry"
+      if has_order_tags:
+        return buy_amount, order_tag
+      else:
+        return buy_amount
 
     if grind_3_sub_grind_count > 0:
       grind_profit = (exit_rate - grind_3_current_open_rate) / grind_3_current_open_rate
@@ -26031,30 +26086,28 @@ class NostalgiaForInfinityX6(IStrategy):
           else self.grinding_v2_buyback_1_distance_ratio_spot
         )
       )
+      and is_not_trade_max_stake
     ):
-      if current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake):
-        buy_amount = (
-          slice_amount
-          * (
-            self.grinding_v2_buyback_1_stake_futures if self.is_futures_mode else self.grinding_v2_buyback_1_stake_spot
-          )
-          / trade.leverage
-        )
-        if buy_amount < (min_stake * 1.5):
-          buy_amount = min_stake * 1.5
-        if buy_amount > max_stake:
-          return None
-        self.dp.send_msg(
-          f"Buyback entry (buyback_1_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        log.info(
-          f"Buyback entry (buyback_1_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        order_tag = "buyback_1_entry"
-        if has_order_tags:
-          return buy_amount, order_tag
-        else:
-          return buy_amount
+      buy_amount = (
+        slice_amount
+        * (self.grinding_v2_buyback_1_stake_futures if self.is_futures_mode else self.grinding_v2_buyback_1_stake_spot)
+        / trade.leverage
+      )
+      if buy_amount < (min_stake * 1.5):
+        buy_amount = min_stake * 1.5
+      if buy_amount > max_stake:
+        return None
+      self.dp.send_msg(
+        f"Buyback entry (buyback_1_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      log.info(
+        f"Buyback entry (buyback_1_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      order_tag = "buyback_1_entry"
+      if has_order_tags:
+        return buy_amount, order_tag
+      else:
+        return buy_amount
 
     # if buyback_1_sub_grind_count > 0:
     #   grind_profit = (exit_rate - buyback_1_current_open_rate) / buyback_1_current_open_rate
@@ -26153,30 +26206,28 @@ class NostalgiaForInfinityX6(IStrategy):
           else self.grinding_v2_buyback_2_distance_ratio_spot
         )
       )
+      and is_not_trade_max_stake
     ):
-      if current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake):
-        buy_amount = (
-          slice_amount
-          * (
-            self.grinding_v2_buyback_2_stake_futures if self.is_futures_mode else self.grinding_v2_buyback_2_stake_spot
-          )
-          / trade.leverage
-        )
-        if buy_amount < (min_stake * 1.5):
-          buy_amount = min_stake * 1.5
-        if buy_amount > max_stake:
-          return None
-        self.dp.send_msg(
-          f"Buyback entry (buyback_2_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        log.info(
-          f"Buyback entry (buyback_2_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        order_tag = "buyback_2_entry"
-        if has_order_tags:
-          return buy_amount, order_tag
-        else:
-          return buy_amount
+      buy_amount = (
+        slice_amount
+        * (self.grinding_v2_buyback_2_stake_futures if self.is_futures_mode else self.grinding_v2_buyback_2_stake_spot)
+        / trade.leverage
+      )
+      if buy_amount < (min_stake * 1.5):
+        buy_amount = min_stake * 1.5
+      if buy_amount > max_stake:
+        return None
+      self.dp.send_msg(
+        f"Buyback entry (buyback_2_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      log.info(
+        f"Buyback entry (buyback_2_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      order_tag = "buyback_2_entry"
+      if has_order_tags:
+        return buy_amount, order_tag
+      else:
+        return buy_amount
 
     # if buyback_2_sub_grind_count > 0:
     #   grind_profit = (exit_rate - buyback_2_current_open_rate) / buyback_2_current_open_rate
@@ -26275,30 +26326,28 @@ class NostalgiaForInfinityX6(IStrategy):
           else self.grinding_v2_buyback_3_distance_ratio_spot
         )
       )
+      and is_not_trade_max_stake
     ):
-      if current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake):
-        buy_amount = (
-          slice_amount
-          * (
-            self.grinding_v2_buyback_3_stake_futures if self.is_futures_mode else self.grinding_v2_buyback_3_stake_spot
-          )
-          / trade.leverage
-        )
-        if buy_amount < (min_stake * 1.5):
-          buy_amount = min_stake * 1.5
-        if buy_amount > max_stake:
-          return None
-        self.dp.send_msg(
-          f"Buyback entry (buyback_3_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        log.info(
-          f"Buyback entry (buyback_3_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        order_tag = "buyback_3_entry"
-        if has_order_tags:
-          return buy_amount, order_tag
-        else:
-          return buy_amount
+      buy_amount = (
+        slice_amount
+        * (self.grinding_v2_buyback_3_stake_futures if self.is_futures_mode else self.grinding_v2_buyback_3_stake_spot)
+        / trade.leverage
+      )
+      if buy_amount < (min_stake * 1.5):
+        buy_amount = min_stake * 1.5
+      if buy_amount > max_stake:
+        return None
+      self.dp.send_msg(
+        f"Buyback entry (buyback_3_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      log.info(
+        f"Buyback entry (buyback_3_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      order_tag = "buyback_3_entry"
+      if has_order_tags:
+        return buy_amount, order_tag
+      else:
+        return buy_amount
 
     # if buyback_3_sub_grind_count > 0:
     #   grind_profit = (exit_rate - buyback_3_current_open_rate) / buyback_3_current_open_rate
@@ -47195,6 +47244,9 @@ class NostalgiaForInfinityX6(IStrategy):
       + grind_3_current_grind_stake_profit
     )
 
+    # not reached the max allowed stake for all grinds
+    is_not_trade_max_stake = current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake)
+
     # De-risk level 1
     if (
       self.derisk_enable
@@ -47348,24 +47400,24 @@ class NostalgiaForInfinityX6(IStrategy):
       )
       and (grind_1_sub_grind_count < grind_1_max_sub_grinds)
       and (grind_1_sub_grind_count == 0 or (-grind_1_distance_ratio < grind_1_sub_thresholds[grind_1_sub_grind_count]))
+      and is_not_trade_max_stake
     ):
-      if current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake):
-        buy_amount = slice_amount * grind_1_stakes[grind_1_sub_grind_count] / trade.leverage
-        if buy_amount < (min_stake * 1.5):
-          buy_amount = min_stake * 1.5
-        if buy_amount > max_stake:
-          return None
-        self.dp.send_msg(
-          f"Grinding entry (grind_1_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        log.info(
-          f"Grinding entry (grind_1_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        order_tag = "grind_1_entry"
-        if has_order_tags:
-          return buy_amount, order_tag
-        else:
-          return buy_amount
+      buy_amount = slice_amount * grind_1_stakes[grind_1_sub_grind_count] / trade.leverage
+      if buy_amount < (min_stake * 1.5):
+        buy_amount = min_stake * 1.5
+      if buy_amount > max_stake:
+        return None
+      self.dp.send_msg(
+        f"Grinding entry (grind_1_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      log.info(
+        f"Grinding entry (grind_1_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      order_tag = "grind_1_entry"
+      if has_order_tags:
+        return buy_amount, order_tag
+      else:
+        return buy_amount
 
     if grind_1_sub_grind_count > 0:
       grind_profit = -(exit_rate - grind_1_current_open_rate) / grind_1_current_open_rate
@@ -47438,24 +47490,24 @@ class NostalgiaForInfinityX6(IStrategy):
       )
       and (grind_2_sub_grind_count < grind_2_max_sub_grinds)
       and (grind_2_sub_grind_count == 0 or (-grind_2_distance_ratio < grind_2_sub_thresholds[grind_2_sub_grind_count]))
+      and is_not_trade_max_stake
     ):
-      if current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake):
-        buy_amount = slice_amount * grind_2_stakes[grind_2_sub_grind_count] / trade.leverage
-        if buy_amount < (min_stake * 1.5):
-          buy_amount = min_stake * 1.5
-        if buy_amount > max_stake:
-          return None
-        self.dp.send_msg(
-          f"Grinding entry (grind_2_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        log.info(
-          f"Grinding entry (grind_2_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        order_tag = "grind_2_entry"
-        if has_order_tags:
-          return buy_amount, order_tag
-        else:
-          return buy_amount
+      buy_amount = slice_amount * grind_2_stakes[grind_2_sub_grind_count] / trade.leverage
+      if buy_amount < (min_stake * 1.5):
+        buy_amount = min_stake * 1.5
+      if buy_amount > max_stake:
+        return None
+      self.dp.send_msg(
+        f"Grinding entry (grind_2_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      log.info(
+        f"Grinding entry (grind_2_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      order_tag = "grind_2_entry"
+      if has_order_tags:
+        return buy_amount, order_tag
+      else:
+        return buy_amount
 
     if grind_2_sub_grind_count > 0:
       grind_profit = -(exit_rate - grind_2_current_open_rate) / grind_2_current_open_rate
@@ -47528,24 +47580,24 @@ class NostalgiaForInfinityX6(IStrategy):
       )
       and (grind_3_sub_grind_count < grind_3_max_sub_grinds)
       and (grind_3_sub_grind_count == 0 or (-grind_3_distance_ratio < grind_3_sub_thresholds[grind_3_sub_grind_count]))
+      and is_not_trade_max_stake
     ):
-      if current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake):
-        buy_amount = slice_amount * grind_3_stakes[grind_3_sub_grind_count] / trade.leverage
-        if buy_amount < (min_stake * 1.5):
-          buy_amount = min_stake * 1.5
-        if buy_amount > max_stake:
-          return None
-        self.dp.send_msg(
-          f"Grinding entry (grind_3_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        log.info(
-          f"Grinding entry (grind_3_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        order_tag = "grind_3_entry"
-        if has_order_tags:
-          return buy_amount, order_tag
-        else:
-          return buy_amount
+      buy_amount = slice_amount * grind_3_stakes[grind_3_sub_grind_count] / trade.leverage
+      if buy_amount < (min_stake * 1.5):
+        buy_amount = min_stake * 1.5
+      if buy_amount > max_stake:
+        return None
+      self.dp.send_msg(
+        f"Grinding entry (grind_3_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      log.info(
+        f"Grinding entry (grind_3_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      order_tag = "grind_3_entry"
+      if has_order_tags:
+        return buy_amount, order_tag
+      else:
+        return buy_amount
 
     if grind_3_sub_grind_count > 0:
       grind_profit = -(exit_rate - grind_3_current_open_rate) / grind_3_current_open_rate
@@ -47625,30 +47677,28 @@ class NostalgiaForInfinityX6(IStrategy):
           else self.grinding_v2_buyback_1_distance_ratio_spot
         )
       )
+      and is_not_trade_max_stake
     ):
-      if current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake):
-        buy_amount = (
-          slice_amount
-          * (
-            self.grinding_v2_buyback_1_stake_futures if self.is_futures_mode else self.grinding_v2_buyback_1_stake_spot
-          )
-          / trade.leverage
-        )
-        if buy_amount < (min_stake * 1.5):
-          buy_amount = min_stake * 1.5
-        if buy_amount > max_stake:
-          return None
-        self.dp.send_msg(
-          f"Buyback entry (buyback_1_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        log.info(
-          f"Buyback entry (buyback_1_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        order_tag = "buyback_1_entry"
-        if has_order_tags:
-          return buy_amount, order_tag
-        else:
-          return buy_amount
+      buy_amount = (
+        slice_amount
+        * (self.grinding_v2_buyback_1_stake_futures if self.is_futures_mode else self.grinding_v2_buyback_1_stake_spot)
+        / trade.leverage
+      )
+      if buy_amount < (min_stake * 1.5):
+        buy_amount = min_stake * 1.5
+      if buy_amount > max_stake:
+        return None
+      self.dp.send_msg(
+        f"Buyback entry (buyback_1_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      log.info(
+        f"Buyback entry (buyback_1_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      order_tag = "buyback_1_entry"
+      if has_order_tags:
+        return buy_amount, order_tag
+      else:
+        return buy_amount
 
     # if buyback_1_sub_grind_count > 0:
     #   grind_profit = -(exit_rate - buyback_1_current_open_rate) / buyback_1_current_open_rate
@@ -47747,30 +47797,28 @@ class NostalgiaForInfinityX6(IStrategy):
           else self.grinding_v2_buyback_2_distance_ratio_spot
         )
       )
+      and is_not_trade_max_stake
     ):
-      if current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake):
-        buy_amount = (
-          slice_amount
-          * (
-            self.grinding_v2_buyback_2_stake_futures if self.is_futures_mode else self.grinding_v2_buyback_2_stake_spot
-          )
-          / trade.leverage
-        )
-        if buy_amount < (min_stake * 1.5):
-          buy_amount = min_stake * 1.5
-        if buy_amount > max_stake:
-          return None
-        self.dp.send_msg(
-          f"Buyback entry (buyback_2_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        log.info(
-          f"Buyback entry (buyback_2_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        order_tag = "buyback_2_entry"
-        if has_order_tags:
-          return buy_amount, order_tag
-        else:
-          return buy_amount
+      buy_amount = (
+        slice_amount
+        * (self.grinding_v2_buyback_2_stake_futures if self.is_futures_mode else self.grinding_v2_buyback_2_stake_spot)
+        / trade.leverage
+      )
+      if buy_amount < (min_stake * 1.5):
+        buy_amount = min_stake * 1.5
+      if buy_amount > max_stake:
+        return None
+      self.dp.send_msg(
+        f"Buyback entry (buyback_2_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      log.info(
+        f"Buyback entry (buyback_2_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      order_tag = "buyback_2_entry"
+      if has_order_tags:
+        return buy_amount, order_tag
+      else:
+        return buy_amount
 
     # if buyback_2_sub_grind_count > 0:
     #   grind_profit = -(exit_rate - buyback_2_current_open_rate) / buyback_2_current_open_rate
@@ -47869,30 +47917,28 @@ class NostalgiaForInfinityX6(IStrategy):
           else self.grinding_v2_buyback_3_distance_ratio_spot
         )
       )
+      and is_not_trade_max_stake
     ):
-      if current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake):
-        buy_amount = (
-          slice_amount
-          * (
-            self.grinding_v2_buyback_3_stake_futures if self.is_futures_mode else self.grinding_v2_buyback_3_stake_spot
-          )
-          / trade.leverage
-        )
-        if buy_amount < (min_stake * 1.5):
-          buy_amount = min_stake * 1.5
-        if buy_amount > max_stake:
-          return None
-        self.dp.send_msg(
-          f"Buyback entry (buyback_3_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        log.info(
-          f"Buyback entry (buyback_3_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-        )
-        order_tag = "buyback_3_entry"
-        if has_order_tags:
-          return buy_amount, order_tag
-        else:
-          return buy_amount
+      buy_amount = (
+        slice_amount
+        * (self.grinding_v2_buyback_3_stake_futures if self.is_futures_mode else self.grinding_v2_buyback_3_stake_spot)
+        / trade.leverage
+      )
+      if buy_amount < (min_stake * 1.5):
+        buy_amount = min_stake * 1.5
+      if buy_amount > max_stake:
+        return None
+      self.dp.send_msg(
+        f"Buyback entry (buyback_3_entry) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      log.info(
+        f"Buyback entry (buyback_3_entry) [{current_time}] [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+      )
+      order_tag = "buyback_3_entry"
+      if has_order_tags:
+        return buy_amount, order_tag
+      else:
+        return buy_amount
 
     # if buyback_3_sub_grind_count > 0:
     #   grind_profit = -(exit_rate - buyback_3_current_open_rate) / buyback_3_current_open_rate
