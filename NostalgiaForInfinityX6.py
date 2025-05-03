@@ -69,7 +69,7 @@ class NostalgiaForInfinityX6(IStrategy):
   INTERFACE_VERSION = 3
 
   def version(self) -> str:
-    return "v16.4.94"
+    return "v16.4.96"
 
   stoploss = -0.99
 
@@ -456,15 +456,13 @@ class NostalgiaForInfinityX6(IStrategy):
   grinding_v2_buyback_3_derisk_futures = -0.10
 
   # Rebuy mode
-  rebuy_mode_stake_multiplier = 0.2
-  # rebuy_mode_stake_multiplier_alt = 0.3
-  # rebuy_mode_max = 3
-  rebuy_mode_derisk_spot = -1.0
-  rebuy_mode_derisk_futures = -2.0
-  rebuy_mode_stakes_spot = [1.0, 1.25, 1.5, 1.75, 2.0]
-  rebuy_mode_stakes_futures = [1.0, 1.25, 1.5, 1.75, 2.0]
-  rebuy_mode_thresholds_spot = [-0.04, -0.06, -0.08, -0.10, -0.12]
-  rebuy_mode_thresholds_futures = [-0.04, -0.06, -0.08, -0.10, -0.12]
+  rebuy_mode_stake_multiplier = 0.35
+  rebuy_mode_derisk_spot = -0.60
+  rebuy_mode_derisk_futures = -0.60
+  rebuy_mode_stakes_spot = [1.0, 1.0]
+  rebuy_mode_stakes_futures = [1.0, 1.0]
+  rebuy_mode_thresholds_spot = [-0.08, -0.10]
+  rebuy_mode_thresholds_futures = [-0.08, -0.10]
 
   # Rapid mode
   rapid_mode_stake_multiplier_spot = [0.75]
@@ -596,6 +594,7 @@ class NostalgiaForInfinityX6(IStrategy):
     "long_entry_condition_44_enable": True,
     "long_entry_condition_45_enable": True,
     "long_entry_condition_46_enable": True,
+    "long_entry_condition_61_enable": True,
     "long_entry_condition_101_enable": True,
     "long_entry_condition_102_enable": True,
     "long_entry_condition_103_enable": True,
@@ -861,6 +860,10 @@ class NostalgiaForInfinityX6(IStrategy):
         is_derisk = trade.amount < (filled_entries[0].safe_filled * 0.95)
     if previous_sell_reason in [f"exit_{mode_name}_stoploss_doom", f"exit_{mode_name}_stoploss"]:
       is_rapid_mode = all(c in self.long_rapid_mode_tags for c in enter_tags)
+      is_rebuy_mode = all(c in self.long_rebuy_mode_tags for c in enter_tags) or (
+        any(c in self.long_rebuy_mode_tags for c in enter_tags)
+        and all(c in (self.long_rebuy_mode_tags + self.long_grind_mode_tags) for c in enter_tags)
+      )
       if profit_init_ratio > 0.0:
         # profit is over the threshold, don't exit
         self._remove_profit_target(pair)
@@ -877,6 +880,7 @@ class NostalgiaForInfinityX6(IStrategy):
       elif (
         not self.derisk_enable
         and not is_rapid_mode
+        and not is_rebuy_mode
         and (
           profit_init_ratio
           <= -(self.stop_threshold_doom_futures if self.is_futures_mode else self.stop_threshold_doom_spot)
@@ -6677,6 +6681,70 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append(df["BBB_20_2.0_1h"] > 12.0)
           long_entry_logic.append(df["close_max_48"] >= (df["close"] * 1.10))
 
+        # Condition #61 - Rebuy mode (Long).
+        if long_entry_condition_index == 61:
+          # Protections
+          long_entry_logic.append(df["num_empty_288"] <= allowed_empty_candles_288)
+
+          # 5m & 15m down move, 4h high
+          long_entry_logic.append((df["RSI_3"] > 10.0) | (df["RSI_3_15m"] > 20.0) | (df["AROONU_14_4h"] < 85.0))
+          # 15m & 1h down move
+          long_entry_logic.append((df["RSI_3_15m"] > 3.0) | (df["RSI_3_1h"] > 10.0))
+          # 15m & 1d down move
+          long_entry_logic.append((df["RSI_3_15m"] > 3.0) | (df["RSI_3_1d"] > 10.0))
+          # 15m down move, 15m still not low enough
+          long_entry_logic.append((df["RSI_3_15m"] > 3.0) | (df["AROONU_14_15m"] < 30.0))
+          # 15m down move, 1h high
+          long_entry_logic.append((df["RSI_3_15m"] > 5.0) | (df["AROONU_14_1h"] < 80.0))
+          # 15m down move, 4h high
+          long_entry_logic.append((df["RSI_3_15m"] > 15.0) | (df["AROONU_14_4h"] < 90.0))
+          # 1h down move, 4h high
+          long_entry_logic.append((df["RSI_3_1h"] > 10.0) | (df["AROONU_14_4h"] < 80.0))
+          # 15m down move, 15m high
+          long_entry_logic.append((df["RSI_3_15m"] > 10.0) | (df["AROONU_14_15m"] < 70.0))
+          # 15m down move, 1d overbought
+          long_entry_logic.append((df["RSI_3_15m"] > 10.0) | (df["ROC_9_1d"] < 80.0))
+          # 1h down move, 1h still high
+          long_entry_logic.append((df["RSI_3_1h"] > 15.0) | (df["AROONU_14_1h"] < 50.0))
+          # 1h down move, 1h still high
+          long_entry_logic.append((df["RSI_3_1h"] > 15.0) | (df["STOCHRSIk_14_14_3_3_1h"] < 50.0))
+          # 1h down move, 4h high
+          long_entry_logic.append((df["RSI_3_1h"] > 20.0) | (df["AROONU_14_4h"] < 80.0))
+          # 1h down move, 4h high
+          long_entry_logic.append((df["RSI_3_1h"] > 25.0) | (df["AROONU_14_4h"] < 90.0))
+          # 1h down move, 1h & 1d high
+          long_entry_logic.append((df["RSI_3_1h"] > 45.0) | (df["AROONU_14_1h"] < 90.0) | (df["AROONU_14_1d"] < 90.0))
+          # 1h down move, 4h high
+          long_entry_logic.append((df["RSI_3_1h"] > 55.0) | (df["STOCHRSIk_14_14_3_3_4h"] < 90.0))
+          # 15m still high, 4h high
+          long_entry_logic.append((df["RSI_14_15m"] < 40.0) | (df["RSI_14_4h"] < 90.0))
+          # 15m still high, 4h high
+          long_entry_logic.append((df["AROONU_14_15m"] < 50.0) | (df["AROONU_14_4h"] < 90.0))
+          # pump, 1d overbought
+          long_entry_logic.append(
+            (((df["high_max_6_1d"] - df["low_min_6_1d"]) / df["low_min_6_1d"]) < 3.0) | (df["ROC_9_1d"] < 100.0)
+          )
+          # big drop in the last 6 days, 1d down move
+          long_entry_logic.append((df["close"] > (df["high_max_6_1d"] * 0.20)) | (df["RSI_3_1d"] > 15.0))
+          # big drop in the last 20 days, 1d down move
+          long_entry_logic.append((df["close"] > (df["high_max_20_1d"] * 0.15)) | (df["RSI_3_1d"] > 10.0))
+          # big drop in the last 20 days, 4h still high
+          long_entry_logic.append(
+            (df["close"] > (df["high_max_20_1d"] * 0.10)) | (df["STOCHRSIk_14_14_3_3_4h"] < 50.0)
+          )
+          # big drop in the last 30 days, 1h down move
+          long_entry_logic.append((df["close"] > (df["high_max_30_1d"] * 0.15)) | (df["RSI_3_1h"] > 15.0))
+
+          # Logic
+          long_entry_logic.append(df["RSI_3"] < 50.0)
+          long_entry_logic.append(df["AROONU_14"] < 25.0)
+          long_entry_logic.append(df["AROOND_14"] > 75.0)
+          long_entry_logic.append(df["STOCHRSIk_14_14_3_3"] < 20.0)
+          long_entry_logic.append(df["ROC_2"] > -5.0)
+          long_entry_logic.append(df["EMA_26"] > df["EMA_12"])
+          long_entry_logic.append((df["EMA_26"] - df["EMA_12"]) > (df["open"] * 0.030))
+          long_entry_logic.append((df["EMA_26"].shift() - df["EMA_12"].shift()) > (df["open"] / 100.0))
+
         # Condition #101 - Rapid mode (Long).
         if long_entry_condition_index == 101:
           # Protections
@@ -10198,7 +10266,11 @@ class NostalgiaForInfinityX6(IStrategy):
           mark_signal = f"exit_profit_{self.long_rebuy_mode_name}_max"
           self._set_profit_target(pair, mark_signal, current_rate, profit_init_ratio, current_time)
 
-    if signal_name not in [f"exit_profit_{self.long_rebuy_mode_name}_max"]:
+    if signal_name not in [
+      f"exit_profit_{self.long_rebuy_mode_name}_max",
+      f"exit_{self.long_rebuy_mode_name}_stoploss_doom",
+      f"exit_{self.long_rebuy_mode_name}_stoploss_u_e",
+    ]:
       if sell and (signal_name is not None):
         return True, f"{signal_name}"
 
@@ -26314,6 +26386,11 @@ class NostalgiaForInfinityX6(IStrategy):
       ((exit_rate - filled_exits[-1].safe_price) / filled_exits[-1].safe_price) if count_of_exits > 0 else 0.0
     )
 
+    is_rebuy_mode = all(c in self.long_rebuy_mode_tags for c in enter_tags) or (
+      any(c in self.long_rebuy_mode_tags for c in enter_tags)
+      and all(c in (self.long_rebuy_mode_tags + self.long_grind_mode_tags) for c in enter_tags)
+    )
+
     has_order_tags = False
     if hasattr(filled_orders[0], "ft_order_tag"):
       has_order_tags = True
@@ -26656,8 +26733,11 @@ class NostalgiaForInfinityX6(IStrategy):
       + grind_3_sub_grind_count
     )
 
+    # Rebuy mode, the first entry is lower than normal slot stake
+    if is_rebuy_mode:
+      slice_amount /= self.rebuy_mode_stake_multiplier
     # not reached the max allowed stake for all grinds
-    is_not_trade_max_stake = (current_stake_amount < (filled_entries[0].cost * self.grinding_v2_max_stake)) and (
+    is_not_trade_max_stake = (current_stake_amount < (slice_amount * self.grinding_v2_max_stake)) and (
       num_open_grinds_and_buybacks < self.grinding_v2_max_grinds_and_buybacks
     )
 
@@ -26666,6 +26746,7 @@ class NostalgiaForInfinityX6(IStrategy):
       self.derisk_enable
       and self.grinding_v2_derisk_level_1_enable
       and (not is_derisk_1_found)
+      and not is_rebuy_mode
       and (
         profit_stake
         < (
@@ -26704,6 +26785,7 @@ class NostalgiaForInfinityX6(IStrategy):
       self.derisk_enable
       and self.grinding_v2_derisk_level_2_enable
       and (not is_derisk_2_found)
+      and not is_rebuy_mode
       and (
         profit_stake
         < (
@@ -26742,6 +26824,7 @@ class NostalgiaForInfinityX6(IStrategy):
       self.derisk_enable
       and self.grinding_v2_derisk_level_3_enable
       and (not is_derisk_3_found)
+      and not is_rebuy_mode
       and (
         profit_stake
         < (
@@ -30899,8 +30982,8 @@ class NostalgiaForInfinityX6(IStrategy):
       has_order_tags = True
 
     # The first exit is de-risk (providing the trade is still open)
-    if count_of_exits > 0:
-      return self.long_grind_adjust_trade_position(
+    if (count_of_exits > 0) and (filled_exits[0].ft_order_tag in ["derisk_level_3"]):
+      return self.long_grind_adjust_trade_position_v2(
         trade,
         enter_tags,
         current_time,
@@ -30940,8 +31023,6 @@ class NostalgiaForInfinityX6(IStrategy):
 
     current_stake_amount = trade.amount * current_rate
 
-    is_rebuy = False
-
     rebuy_mode_stakes = self.rebuy_mode_stakes_futures if self.is_futures_mode else self.rebuy_mode_stakes_spot
     max_sub_grinds = len(rebuy_mode_stakes)
     rebuy_mode_sub_thresholds = (
@@ -30971,10 +31052,6 @@ class NostalgiaForInfinityX6(IStrategy):
     if (not partial_sell) and (sub_grind_count < max_sub_grinds):
       if (
         ((0 <= sub_grind_count < max_sub_grinds) and (slice_profit_entry < rebuy_mode_sub_thresholds[sub_grind_count]))
-        and (last_candle["protections_long_global"] == True)
-        and (last_candle["protections_long_rebuy"] == True)
-        and (last_candle["global_protections_long_pump"] == True)
-        and (last_candle["global_protections_long_dump"] == True)
         # and (
         #   (last_candle["close"] > (last_candle["close_max_12"] * 0.94))
         #   and (last_candle["close"] > (last_candle["close_max_24"] * 0.92))
@@ -30987,19 +31064,18 @@ class NostalgiaForInfinityX6(IStrategy):
         and (
           (last_candle["RSI_3"] > 10.0)
           and (last_candle["RSI_3_15m"] > 10.0)
-          and (last_candle["RSI_3_1h"] > 10.0)
-          and (last_candle["RSI_3_4h"] > 10.0)
-          and (last_candle["RSI_14"] < 36.0)
+          # and (last_candle["RSI_3_1h"] > 10.0)
+          # and (last_candle["RSI_3_4h"] > 10.0)
+          and (last_candle["RSI_14"] < 40.0)
+          and (last_candle["ROC_2"] > -0.0)
           and (last_candle["close"] < (last_candle["EMA_26"] * 0.988))
         )
       ):
-        buy_amount = (
-          slice_amount * rebuy_mode_stakes[sub_grind_count] / (trade.leverage if self.is_futures_mode else 1.0)
-        )
-        if buy_amount > max_stake:
-          buy_amount = max_stake
+        buy_amount = slice_amount * rebuy_mode_stakes[sub_grind_count] / trade.leverage
         if buy_amount < (min_stake * 1.5):
           buy_amount = min_stake * 1.5
+        if buy_amount > max_stake:
+          return None
         self.dp.send_msg(
           f"Rebuy (r) [{trade.pair}] | Rate: {current_rate} | Stake amount: {buy_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
         )
@@ -31011,24 +31087,27 @@ class NostalgiaForInfinityX6(IStrategy):
         else:
           return buy_amount
 
-      if profit_stake < (
+    if self.derisk_enable and (
+      profit_stake
+      < (
         slice_amount * (self.rebuy_mode_derisk_futures if self.is_futures_mode else self.rebuy_mode_derisk_spot)
         # / (trade.leverage if self.is_futures_mode else 1.0)
-      ):
-        sell_amount = trade.amount * exit_rate / trade.leverage - (min_stake * 1.55)
-        ft_sell_amount = sell_amount * trade.leverage * (trade.stake_amount / trade.amount) / exit_rate
-        if sell_amount > min_stake and ft_sell_amount > min_stake:
-          grind_profit = 0.0
-          self.dp.send_msg(
-            f"Rebuy de-risk (d1) [{trade.pair}] | Rate: {exit_rate} | Stake amount: {sell_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-          )
-          log.info(
-            f"Rebuy de-risk (d1) [{current_time}] [{trade.pair}] | Rate: {exit_rate} | Stake amount: {sell_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
-          )
-          if has_order_tags:
-            return -ft_sell_amount, "d1"
-          else:
-            return -ft_sell_amount
+      )
+    ):
+      sell_amount = trade.amount * exit_rate / trade.leverage - (min_stake * 1.55)
+      ft_sell_amount = sell_amount * trade.leverage * (trade.stake_amount / trade.amount) / exit_rate
+      if sell_amount > min_stake and ft_sell_amount > min_stake:
+        grind_profit = 0.0
+        self.dp.send_msg(
+          f"Rebuy De-risk Level 3 [{trade.pair}] | Rate: {exit_rate} | Stake amount: {sell_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+        )
+        log.info(
+          f"Rebuy De-risk Level 3 [{current_time}] [{trade.pair}] | Rate: {exit_rate} | Stake amount: {sell_amount} | Profit (stake): {profit_stake} | Profit: {(profit_ratio * 100.0):.2f}%"
+        )
+        if has_order_tags:
+          return -ft_sell_amount, "derisk_level_3"
+        else:
+          return -ft_sell_amount
 
     return None
 
