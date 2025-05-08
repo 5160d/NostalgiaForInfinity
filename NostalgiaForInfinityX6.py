@@ -69,7 +69,7 @@ class NostalgiaForInfinityX6(IStrategy):
   INTERFACE_VERSION = 3
 
   def version(self) -> str:
-    return "v16.4.105"
+    return "v16.4.108"
 
   stoploss = -0.99
 
@@ -1973,10 +1973,11 @@ class NostalgiaForInfinityX6(IStrategy):
         and all(c in (self.long_rebuy_mode_tags + self.long_grind_mode_tags) for c in enter_tags)
       ):
         stake_multiplier = self.rebuy_mode_stake_multiplier
-        # Low stakes, on Binance mostly
-        if (proposed_stake * self.rebuy_mode_stake_multiplier) < min_stake:
-          stake_multiplier = self.rebuy_mode_stake_multiplier_alt
-        return proposed_stake * stake_multiplier
+        stake = proposed_stake * stake_multiplier
+        if stake > min_stake:
+          return stake
+        else:
+          return min_stake
       # Rapid mode
       if all(c in self.long_rapid_mode_tags for c in enter_tags) or (
         any(c in self.long_rapid_mode_tags for c in enter_tags)
@@ -6377,6 +6378,8 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append((df["close"] > (df["high_max_12_1h"] * 0.70)) | (df["AROONU_14_4h"] < 70.0))
           # big drop in the last 4 days, 1d overbought
           long_entry_logic.append((df["close"] > (df["high_max_24_4h"] * 0.50)) | (df["ROC_9_1d"] < 100.0))
+          # big drop in the last 4 days, 4h down move
+          long_entry_logic.append((df["close"] > (df["high_max_24_4h"] * 0.20)) | (df["RSI_3_4h"] > 20.0))
           # big drop in the last 6 days, 1d down move
           long_entry_logic.append((df["close"] > (df["high_max_6_1d"] * 0.30)) | (df["RSI_3_1d"] > 15.0))
           # big drop in the last 12 days, 1h down move
@@ -6735,6 +6738,10 @@ class NostalgiaForInfinityX6(IStrategy):
           )
           # 15m down move, 4h high
           long_entry_logic.append((df["RSI_3_15m"] > 15.0) | (df["AROONU_14_4h"] < 90.0))
+          # 15m down move, 15m still not low enough, 1h high
+          long_entry_logic.append(
+            (df["RSI_3_15m"] > 20.0) | (df["AROONU_14_15m"] < 30.0) | (df["AROONU_14_1h"] < 90.0)
+          )
           # 1h down move, 4h high
           long_entry_logic.append((df["RSI_3_1h"] > 10.0) | (df["AROONU_14_4h"] < 80.0))
           # 15m down move, 15m high
@@ -6773,6 +6780,8 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append(
             (((df["high_max_6_1d"] - df["low_min_6_1d"]) / df["low_min_6_1d"]) < 3.0) | (df["ROC_9_1d"] < 100.0)
           )
+          # big drop in the last 4 days, 4h down move
+          long_entry_logic.append((df["close"] > (df["high_max_24_4h"] * 0.20)) | (df["RSI_3_4h"] > 20.0))
           # big drop in the last 6 days, 1d down move
           long_entry_logic.append((df["close"] > (df["high_max_6_1d"] * 0.20)) | (df["RSI_3_1d"] > 15.0))
           # big drop in the last 20 days, 1d down move
@@ -7076,6 +7085,8 @@ class NostalgiaForInfinityX6(IStrategy):
           long_entry_logic.append(
             (df["close"] > (df["high_max_24_4h"] * 0.50)) | (df["STOCHRSIk_14_14_3_3_4h"] < 30.0)
           )
+          # big drop in the last 4 days, 4h down move
+          long_entry_logic.append((df["close"] > (df["high_max_24_4h"] * 0.20)) | (df["RSI_3_4h"] > 20.0))
           # big drop in the last 6 days, 1d down move
           long_entry_logic.append((df["close"] > (df["high_max_6_1d"] * 0.30)) | (df["RSI_3_1d"] > 15.0))
           # big drop in the last 12 days, 4h high
@@ -7401,6 +7412,8 @@ class NostalgiaForInfinityX6(IStrategy):
             | (df["close"] > (df["high_max_6_1d"] * 0.70))
             | (df["close"] < (df["low_min_12_1d"] * 1.25))
           )
+          # big drop in the last 4 days, 4h down move
+          long_entry_logic.append((df["close"] > (df["high_max_24_4h"] * 0.20)) | (df["RSI_3_4h"] > 20.0))
           # big drop in the last 12 days, 1h high
           long_entry_logic.append(
             (df["close"] > (df["high_max_12_1d"] * 0.30)) | (df["STOCHRSIk_14_14_3_3_1h"] < 90.0)
@@ -14323,7 +14336,7 @@ class NostalgiaForInfinityX6(IStrategy):
       ):
         return True, f"exit_{mode_name}_d_1_2"
       elif (
-        (last_candle["WILLR_14"] > -5.0)
+        (last_candle["WILLR_14"] > -8.0)
         and (last_candle["STOCHRSIk_14_14_3_3"] > 99.0)
         and (last_candle["CMF_20_1h"] < -0.0)
         and (last_candle["CMF_20_4h"] < -0.0)
@@ -36437,7 +36450,7 @@ class NostalgiaForInfinityX6(IStrategy):
       ):
         return True, f"exit_{mode_name}_d_1_2"
       elif (
-        (last_candle["WILLR_14"] < -95.0)
+        (last_candle["WILLR_14"] < -92.0)
         and (last_candle["STOCHRSIk_14_14_3_3"] < 1.0)
         and (last_candle["CMF_20_1h"] > 0.0)
         and (last_candle["CMF_20_4h"] > 0.0)
