@@ -1,0 +1,102 @@
+name: Sync Fork and Releases
+
+on:
+  schedule:
+    - cron: '0 0 */2 * *' # Every two days at midnight UTC
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  sync_and_release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Needed to fetch all history and tags
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync Fork and Releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+
+          # 1. Auto-detect upstream and default branch
+          echo "Fetching repository info..."
+          REPO_INFO=$(gh api repos/${{ github.repository }})
+
+          IS_FORK=$(echo "$REPO_INFO" | jq -r '.fork')
+          if [ "$IS_FORK" != "true" ]; then
+            echo "This repository is not a fork. Sync is not required."
+            exit 0
+          fi
+
+          UPSTREAM_REPO=$(echo "$REPO_INFO" | jq -r '.parent.full_name')
+          DEFAULT_BRANCH=$(echo "$REPO_INFO" | jq -r '.default_branch')
+
+          echo "Upstream repo: $UPSTREAM_REPO"
+          echo "Default branch: $DEFAULT_BRANCH"
+
+          # 2. Sync Branch
+          echo "Configuring git..."
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          echo "Adding upstream remote..."
+          git remote add upstream "https://github.com/$UPSTREAM_REPO.git"
+
+          echo "Fetching upstream..."
+          git fetch upstream
+
+          echo "Merging upstream/$DEFAULT_BRANCH into local default branch..."
+          git checkout "$DEFAULT_BRANCH"
+          # Attempt to merge. This will fail and exit if there are conflicts due to 'set -e'
+          git merge "upstream/$DEFAULT_BRANCH" --no-edit
+
+          echo "Pushing updated branch..."
+          git push origin "$DEFAULT_BRANCH"
+
+          # 3. Sync Tags
+          echo "Pushing tags to origin..."
+          git push origin --tags
+
+          # 4. Sync Releases
+          echo "Fetching upstream releases..."
+          UPSTREAM_RELEASES=$(gh api repos/$UPSTREAM_REPO/releases | jq -c '.[] | {tag_name: .tag_name, name: .name, prerelease: .prerelease}')
+
+          echo "Fetching origin releases..."
+          ORIGIN_RELEASES=$(gh api repos/${{ github.repository }}/releases | jq -r '.[].tag_name')
+
+          echo "Syncing releases..."
+          while IFS= read -r release; do
+            TAG_NAME=$(echo "$release" | jq -r '.tag_name')
+            RELEASE_NAME=$(echo "$release" | jq -r '.name')
+            IS_PRERELEASE=$(echo "$release" | jq -r '.prerelease')
+
+            if [[ -z "$TAG_NAME" || "$TAG_NAME" == "null" ]]; then
+              continue
+            fi
+
+            # Check if release exists on origin
+            if echo "$ORIGIN_RELEASES" | grep -qx "$TAG_NAME"; then
+              echo "Release $TAG_NAME already exists on origin. Skipping."
+              continue
+            fi
+
+            echo "Creating release $TAG_NAME..."
+            PRERELEASE_FLAG=""
+            if [ "$IS_PRERELEASE" == "true" ]; then
+              PRERELEASE_FLAG="--prerelease"
+            fi
+
+            # Use --title or just create using tag name if title is null
+            if [[ -z "$RELEASE_NAME" || "$RELEASE_NAME" == "null" ]]; then
+              gh release create "$TAG_NAME" -n "" $PRERELEASE_FLAG
+            else
+              gh release create "$TAG_NAME" -t "$RELEASE_NAME" -n "" $PRERELEASE_FLAG
+            fi
+          done <<< "$UPSTREAM_RELEASES"
+
+          echo "Sync complete!"
