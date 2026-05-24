@@ -24,6 +24,8 @@ USER root
 
 COPY --from=builder /home/ftuser/.local /home/ftuser/.local
 COPY --chown=1000:1000 tests/requirements.txt /freqtrade/
+COPY --chown=1000:1000 configs /freqtrade/user_data/configs
+COPY --chown=1000:1000 NostalgiaForInfinityX7.py /freqtrade/user_data/strategies/
 
 USER ftuser
 
